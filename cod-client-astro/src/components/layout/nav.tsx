@@ -13,13 +13,13 @@ import {
   ShoppingCart,
   Sparkles,
   Star,
-  Store,
   Tag,
   Truck,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { canScope, useIdentity } from "@/features/auth/components/RequireAuth";
+import type { Identity } from "@/lib/gate";
 import { useT } from "@/i18n/react";
 
 export type NavLeaf = {
@@ -48,6 +48,12 @@ export type NavSection = {
   label: string;
   items: NavNode[];
 };
+
+export function canSeeNavItem(identity: Identity | null, scope?: string): boolean {
+  if (identity?.role === "admin") return true;
+  if (!scope) return true;
+  return canScope(identity, scope);
+}
 
 export function useNavSections(): NavSection[] {
   const identity = useIdentity();
@@ -242,23 +248,13 @@ export function useNavSections(): NavSection[] {
             ? {
                 ...item,
                 children: item.children.filter(
-                  (child) =>
-                    !child.scope ||
-                    child.scope === "admin"
-                      ? identity?.role === "admin"
-                      : canScope(identity, child.scope),
+                  (child) => canSeeNavItem(identity, child.scope),
                 ),
               }
             : item,
         )
         .filter((item) => {
-          if (item.scope) {
-            if (item.scope === "admin") {
-              if (identity?.role !== "admin") return false;
-            } else if (!canScope(identity, item.scope)) {
-              return false;
-            }
-          }
+          if (!canSeeNavItem(identity, item.scope)) return false;
           if (item.kind === "group") return item.children.length > 0;
           return true;
         }),
