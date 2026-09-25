@@ -7,6 +7,21 @@ import { STORE_API_KEY, COD_SERVER_URL as _COD_SERVER_URL } from "astro:env/serv
 const COD_SERVER_URL = _COD_SERVER_URL ?? "http://localhost:8787";
 import type { StoreConfig, Commune, Review, StorePagePublic } from "./types";
 
+const STORE_API_TIMEOUT_MS = 8_000;
+
+async function fetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), STORE_API_TIMEOUT_MS);
+  try {
+    return await globalThis.fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function storeHeaders() {
   return {
     "X-Store-API-Key": STORE_API_KEY!,

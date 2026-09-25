@@ -12,6 +12,9 @@ import { getDb } from "@/db";
 import { users, userScopes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ERROR_CODES } from "../../../cod-shared/errors/codes";
+import { TimeoutError, withTimeout } from "@/lib/timeout";
+
+const AUTH_DB_TIMEOUT_MS = 5_000;
 
 export async function authMiddleware(c: Context<AppContext>, next: Next) {
   const authHeader = c.req.header("Authorization");
@@ -24,8 +27,19 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
   if (bearerMatch) {
     try {
       const payload = await verifySessionJwt(bearerMatch[1], c.env);
-      user = await db.select().from(users).where(eq(users.id, payload.sub)).get();
+      user = await withTimeout(
+        db.select().from(users).where(eq(users.id, payload.sub)).get(),
+        AUTH_DB_TIMEOUT_MS,
+        "user lookup",
+      );
     } catch (err) {
+      if (err instanceof TimeoutError) {
+        return c.json({
+          error: "Authentication temporarily unavailable",
+          code: ERROR_CODES.INTERNAL_SERVER_ERROR,
+          category: "INTERNAL",
+        }, 503);
+      }
       console.error("[auth] JWT verification failed:", err);
       return c.json({ 
         error: "Invalid token", 
@@ -34,7 +48,22 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
       }, 401);
     }
   } else if (apiKey) {
-    user = await db.select().from(users).where(eq(users.apiKey, apiKey)).get();
+    try {
+      user = await withTimeout(
+        db.select().from(users).where(eq(users.apiKey, apiKey)).get(),
+        AUTH_DB_TIMEOUT_MS,
+        "API key lookup",
+      );
+    } catch (err) {
+      if (err instanceof TimeoutError) {
+        return c.json({
+          error: "Authentication temporarily unavailable",
+          code: ERROR_CODES.INTERNAL_SERVER_ERROR,
+          category: "INTERNAL",
+        }, 503);
+      }
+      throw err;
+    }
   } else {
     return c.json({ 
       error: "Missing authorization", 
@@ -59,9 +88,27 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
     }, 403);
   }
 
-  const scopes = user.role === "admin"
-    ? ["*"]
-    : (await db.select({ scope: userScopes.scope }).from(userScopes).where(eq(userScopes.userId, user.id))).map((r) => r.scope);
+  let scopes: string[];
+  if (user.role === "admin") {
+    scopes = ["*"];
+  } else {
+    try {
+      scopes = (await withTimeout(
+          db.select({ scope: userScopes.scope }).from(userScopes).where(eq(userScopes.userId, user.id)),
+          AUTH_DB_TIMEOUT_MS,
+          "scope lookup",
+        )).map((r) => r.scope);
+    } catch (err) {
+      if (err instanceof TimeoutError) {
+        return c.json({
+          error: "Authentication temporarily unavailable",
+          code: ERROR_CODES.INTERNAL_SERVER_ERROR,
+          category: "INTERNAL",
+        }, 503);
+      }
+      throw err;
+    }
+  }
 
   c.set("user", { ...user, scopes });
   await next();

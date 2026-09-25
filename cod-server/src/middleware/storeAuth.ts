@@ -10,6 +10,9 @@ import type { AppContext } from "@/types";
 import { getDb } from "@/db";
 import { storeApiKeys } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { TimeoutError, withTimeout } from "@/lib/timeout";
+
+const STORE_AUTH_DB_TIMEOUT_MS = 5_000;
 
 async function sha256hex(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
@@ -29,11 +32,15 @@ export async function storeAuthMiddleware(c: Context<AppContext>, next: Next) {
     const db = getDb(c.env.DB);
     const keyHash = await sha256hex(rawKey);
 
-    const record = await db
-      .select()
-      .from(storeApiKeys)
-      .where(eq(storeApiKeys.keyHash, keyHash))
-      .get();
+    const record = await withTimeout(
+      db
+        .select()
+        .from(storeApiKeys)
+        .where(eq(storeApiKeys.keyHash, keyHash))
+        .get(),
+      STORE_AUTH_DB_TIMEOUT_MS,
+      "store API key lookup",
+    );
 
     if (!record) {
       return c.json({ error: "Invalid store API key" }, 401);
@@ -51,6 +58,9 @@ export async function storeAuthMiddleware(c: Context<AppContext>, next: Next) {
     await next();
   } catch (err) {
     console.error("[storeAuth]", err);
+    if (err instanceof TimeoutError) {
+      return c.json({ error: "Store authentication temporarily unavailable" }, 503);
+    }
     return c.json({ error: "Authentication failed" }, 500);
   }
 }

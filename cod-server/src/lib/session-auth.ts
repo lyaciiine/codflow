@@ -26,6 +26,7 @@ interface Env {
 }
 
 const JWKS_TTL_MS = 5 * 60 * 1000;
+const JWKS_FETCH_TIMEOUT_MS = 5_000;
 
 let jwksCache: { keys: JsonWebKey[]; kidByKeyId: Map<string, number>; fetchedAt: number } | null =
   null;
@@ -36,7 +37,14 @@ function authBaseUrl(env: Env): string {
 
 async function fetchJwks(env: Env, force = false): Promise<void> {
   if (!force && jwksCache && Date.now() - jwksCache.fetchedAt < JWKS_TTL_MS) return;
-  const res = await fetch(`${authBaseUrl(env)}/api/auth/jwks`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), JWKS_FETCH_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${authBaseUrl(env)}/api/auth/jwks`, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) throw new Error(`Failed to fetch JWKS (${res.status})`);
   const body = (await res.json()) as { keys: Array<JsonWebKey & { kid?: string }> };
   const kidByKeyId = new Map<string, number>();

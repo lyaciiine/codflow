@@ -14,6 +14,7 @@
 const META_API_VERSION = "v26.0";
 const META_API_BASE = "https://graph.facebook.com";
 const DZ_COUNTRY_CODE = "213";
+const META_FETCH_TIMEOUT_MS = 8_000;
 
 async function sha256hex(value: string): Promise<string> {
   const data = new TextEncoder().encode(value.toLowerCase().replace(/\s+/g, ""));
@@ -143,14 +144,19 @@ export async function sendCapiEvent(
   const url = `${META_API_BASE}/${META_API_VERSION}/${pixelId}/events?access_token=${accessToken}`;
 
   let res: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), META_FETCH_TIMEOUT_MS);
   try {
     res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch (err) {
     throw new Error(`Meta CAPI network error: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    clearTimeout(timer);
   }
 
   const json = (await res.json().catch(() => null)) as any;
