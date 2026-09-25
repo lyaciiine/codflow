@@ -74,6 +74,14 @@ export default defineConfig({
     // for unmatched HTML requests during astro dev only.
     appType: "spa",
     plugins: [orderDetailFallback, tailwindcss()],
+    environments: {
+      ssr: {
+        optimizeDeps: {
+          noDiscovery: true,
+          exclude: ["astro/assets/services/noop"],
+        },
+      },
+    },
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
