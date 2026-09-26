@@ -130,6 +130,10 @@ const UNSELECTED_CLASSES = [
 export function toggleAddressFields(): void {
   const container = document.getElementById("address-field-container");
   if (!container) return;
+  if (container.dataset.checkoutFieldHidden === "true") {
+    container.classList.add("hidden");
+    return;
+  }
   const hidden = currentDeliveryType() !== "home";
   container.classList.toggle("hidden", hidden);
 

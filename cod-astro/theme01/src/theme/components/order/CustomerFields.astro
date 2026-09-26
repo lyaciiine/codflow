@@ -207,7 +207,7 @@ const wilayaOptions = WILAYAS.map((w) => ({
   <!-- Address - CONDITIONAL: Only shown for home delivery, and only when not hidden by policy.
        When hidden, merchants take the address by phone after the order lands. -->
   {showAddress && (
-    <div id="address-field-container">
+    <div id="address-field-container" class="hidden" data-checkout-field-hidden="true">
       <label for="f-address" class="sr-only">{content.formAddressLabel}</label>
       <input
         id="f-address" type="text" name="address"
@@ -218,6 +218,7 @@ const wilayaOptions = WILAYAS.map((w) => ({
           ? `${content.formAddressLabel} *`
           : content.formAddressPlaceholder}
         class:list={["form-input", fieldErrors.address && "error"]}
+        disabled
       />
       {fieldErrors.address && (
         <p class="text-[0.75rem] text-red-500 font-bold mt-2 ps-1">{fieldErrors.address[0]}</p>
@@ -226,12 +227,13 @@ const wilayaOptions = WILAYAS.map((w) => ({
   )}
 
   {showNotes && (
-    <div>
+    <div class="hidden">
       <label for="f-notes" class="sr-only">{content.formNotesLabel}</label>
       <textarea
         id="f-notes" name="notes" rows="2"
         placeholder={content.formNotesPlaceholder}
         class="form-input"
+        disabled
       ></textarea>
     </div>
   )}
