@@ -7,6 +7,10 @@ import { NotFoundError, ValidationError, ConflictError, BusinessLogicError } fro
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { assertOtpVerification } from "./otp-gate";
 import { assertTurnstile } from "./turnstile-gate";
+// Pure, like normalizeOrderLines: the whole Checkout Form Policy contract is a
+// function of (policy, submitted form), with nothing to stub.
+import { applyCheckoutPolicy } from "../../../../cod-shared/checkout-form/apply";
+import { checkoutPolicyMessage } from "../../../../cod-shared/checkout-form/messages";
 import { resolveTrackingConfig } from "../../../../cod-shared/queries/tracking-config";
 import {
   normalizeOrderLines,
@@ -217,12 +221,46 @@ export async function listStoreCommunes(c: Context<AppContext>) {
 export async function createStoreOrder(c: Context<AppContext>) {
   const db = getDb(c.env.DB);
   const bodyData: any = (c.req as any).valid?.("json");
-  const data: import("./validation").StoreOrderInput =
+  const submitted: import("./validation").StoreOrderInput =
     bodyData ?? storeOrderSchema.parse(await c.req.json());
 
   // Turnstile bot gate — runs before the SKU/stock lookups so bot traffic is
   // rejected before spending D1 reads. No-op when the store has it disabled.
-  await assertTurnstile(c, db, data);
+  await assertTurnstile(c, db, submitted);
+
+  // ── Checkout Form Policy ─────────────────────────────────────────────────
+  //
+  // The merchant decides which fields the form asks for and how strictly each
+  // is enforced. The storefront renders that policy, but the storefront is not
+  // the trust boundary — this is, exactly like the OTP and Turnstile gates
+  // above. A page the CDN cached before the policy changed, or a script posting
+  // straight at the API, both land here.
+  //
+  // Position is load-bearing: after the bot gate, so bots never pay for the
+  // read, and before the delivery fee is resolved, because a delivery type the
+  // merchant turned off must never reach pricing.
+  const { policy, lang } = await queries.getCheckoutFormPolicy(db, c.get("storeId")!);
+  const applied = applyCheckoutPolicy(policy, submitted);
+  if (!applied.ok) {
+    throw new ValidationError(
+      // Answered in the store's own language: by this point the request has
+      // left the storefront, and the theme has no say in why it was refused.
+      checkoutPolicyMessage(lang, applied.rejection),
+      ERROR_CODES.VALIDATION_FAILED,
+      { field: applied.rejection.field, reason: applied.rejection.code }
+    );
+  }
+
+  // Everything downstream reads the APPLIED values, never the wire: a hidden
+  // field is gone by here, and an email is already trimmed and lowercased.
+  const data: import("./validation").StoreOrderInput = {
+    ...submitted,
+    deliveryType: applied.value.deliveryType,
+    address: applied.value.address,
+    notes: applied.value.notes,
+    email: applied.value.email,
+  };
+  const customFieldAnswers = applied.value.customFieldAnswers;
 
   // Normalise first: every request shape becomes one list, and a basket that
   // breaks its own bounds is refused here with a 4xx rather than surfacing as
@@ -333,6 +371,8 @@ export async function createStoreOrder(c: Context<AppContext>) {
       landingPageId,
       ipAddress,
       userAgent,
+      customerEmail: data.email,
+      customFieldAnswers,
     },
     snapshot
   );

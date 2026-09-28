@@ -54,6 +54,12 @@ function storeRow(overrides: Record<string, any> = {}) {
     storeApiKey: "sk_store_abc123",
     createdAt: NOW,
     updatedAt: NOW,
+    // NULL = today's order form. Appended last, like the schema column itself,
+    // because the mock db maps a full-table select positionally.
+    checkoutFormJson: null,
+    // The widget config sits after it, again last in schema order. NULL is
+    // "no widget", which is what every store reads until it configures one.
+    whatsappWidgetJson: null,
     ...overrides,
   };
 }

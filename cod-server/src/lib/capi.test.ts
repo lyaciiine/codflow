@@ -16,6 +16,7 @@ const FN_ARABIC = "0cb4c9b21062de4d2c0edd48efc9fa86b97fdc8a6a4e7fa7092544f84e121
 const EXT_CUST123 = "fc3ce5a6986e1e0556c777fcaa0dfb75642361b8f7332c672a3799aa0e709127";
 const ZP_16000 = "2570901c76653e578fecf066b5fc3fa1619f1a051e928e39797bab1b1342bf40";
 const COUNTRY_DZ = "2a92270185a50d8020949f2cfb2125d1af1c2bd3dd92eada9210fcdb5c4310bf";
+const EM_SHOPPER = "a85e9ca18f34935ab9b0381b25bfad2455444112b0149270fd88e3da172fe196";
 
 const PIXEL = "1234567890";
 const TOKEN = "EAAG-test-token";
@@ -56,6 +57,76 @@ function stubFetch(response: () => Response): Captured {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("email (em)", () => {
+  /**
+   * The shopper's email is the strongest identifier Meta matches on after the
+   * phone, so an order that carries one should say so — that is most of the
+   * value in storing it at all. Everything here is about NOT silently sending
+   * the wrong thing: a mishashed address is not a weaker match, it is a match
+   * for a mailbox nobody owns.
+   */
+  it("hashes the address when the order carries one", async () => {
+    const captured = stubFetch(metaOk);
+    await sendCapiEvent(
+      PIXEL,
+      TOKEN,
+      basePayload({ userData: { phone: "0555123456", email: "shopper@example.com" } }),
+    );
+    expect(captured.body.data[0].user_data.em).toBe(EM_SHOPPER);
+  });
+
+  it("trims and lowercases, and does nothing else", async () => {
+    // Meta's rule for em is exactly this. The fn/ln normalisation below strips
+    // punctuation, which would turn "o'brien@x.com" into a different mailbox.
+    const captured = stubFetch(metaOk);
+    await sendCapiEvent(
+      PIXEL,
+      TOKEN,
+      basePayload({ userData: { phone: "0555123456", email: "  Shopper@Example.COM  " } }),
+    );
+    expect(captured.body.data[0].user_data.em).toBe(EM_SHOPPER);
+  });
+
+  it("keeps punctuation that belongs to the address", async () => {
+    const captured = stubFetch(metaOk);
+    await sendCapiEvent(
+      PIXEL,
+      TOKEN,
+      basePayload({ userData: { phone: "0555123456", email: "o'brien+tag@example.com" } }),
+    );
+    const { createHash } = await import("node:crypto");
+    expect(captured.body.data[0].user_data.em).toBe(
+      createHash("sha256").update("o'brien+tag@example.com").digest("hex"),
+    );
+  });
+
+  it.each([
+    ["no email at all", undefined],
+    ["null", null],
+    ["an empty string", ""],
+  ])("omits em for %s — every order placed before the field existed", async (_label, email) => {
+    const captured = stubFetch(metaOk);
+    await sendCapiEvent(
+      PIXEL,
+      TOKEN,
+      basePayload({ userData: { phone: "0555123456", email: email as string | null } }),
+    );
+    expect(captured.body.data[0].user_data).not.toHaveProperty("em");
+    // The event is still sent, and still matches on the phone.
+    expect(captured.body.data[0].user_data.ph).toBe(PH_213555123456);
+  });
+
+  it("never sends the address in the clear", async () => {
+    const captured = stubFetch(metaOk);
+    await sendCapiEvent(
+      PIXEL,
+      TOKEN,
+      basePayload({ userData: { phone: "0555123456", email: "shopper@example.com" } }),
+    );
+    expect(JSON.stringify(captured.body)).not.toContain("shopper@example.com");
+  });
+});
 
 describe("sendCapiEvent — request shape", () => {
   it("posts to the current Graph API version with the token in the query string", async () => {

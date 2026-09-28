@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, X } from "lucide-react";
+import { AlertCircle, Pencil, X } from "lucide-react";
 import {
   canScope,
   useIdentity,
@@ -32,6 +32,7 @@ import {
   canAssignOrder,
   canDeleteOrderFromDetail,
   canDispatchOrder,
+  canEditOrder,
   detailStatusActions,
   dispatchFieldSupport,
   orderStatusFlow,
@@ -45,11 +46,13 @@ import type {
   OrderStatus,
 } from "@/features/orders/types";
 import { OrderCustomerCard } from "@/features/orders/components/OrderCustomerCard";
+import { OrderCustomAnswersCard } from "@/features/orders/components/OrderCustomAnswersCard";
 import { OrderProductsCard } from "@/features/orders/components/OrderProductsCard";
 import { OrderDeliveryCard } from "@/features/orders/components/OrderDeliveryCard";
 import { OrderStatusTimelineCard } from "@/features/orders/components/OrderStatusTimelineCard";
 import { OrderShipmentActionsCard } from "@/features/orders/components/OrderShipmentActionsCard";
 import { OrderMobileActionBar } from "@/features/orders/components/OrderMobileActionBar";
+import { EditOrderDialog } from "@/features/orders/components/EditOrderDialog";
 
 export function OrderDetail({ orderId }: { orderId: string }) {
   const t = useT("orders");
@@ -65,6 +68,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const [status, setStatus] = useState<OrderStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   async function load() {
     setError(null);
@@ -299,6 +303,19 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               status={effectiveStatus ?? order.status}
               webhook={order.statusHistory[0]?.by?.startsWith("webhook:")}
             />
+            {canScope(identity, "orders:update") &&
+              canEditOrder(order) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="size-9 min-h-9 px-0"
+                  onClick={() => setEditOpen(true)}
+                  disabled={busy}
+                  aria-label={t("actions.edit")}
+                >
+                  <Pencil size={16} />
+                </Button>
+              )}
             {canScope(identity, "orders:delete") &&
               canDeleteOrderFromDetail(effectiveStatus ?? order.status) && (
                 <Button
@@ -322,9 +339,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </Alert>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="space-y-5">
           <OrderCustomerCard order={order} />
+          <OrderCustomAnswersCard customFieldsJson={order.customFieldsJson} />
           <OrderProductsCard order={order} locale={locale} />
           <OrderDeliveryCard order={order} company={company} />
         </div>
@@ -404,6 +422,15 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         onChangeOrderStatus={changeOrderStatus}
         onDownloadLabel={downloadOrderLabel}
       />
+
+      {editOpen && (
+        <EditOrderDialog
+          order={order}
+          onClose={() => setEditOpen(false)}
+          onChanged={() => load()}
+          onError={(message) => setError(message)}
+        />
+      )}
     </div>
   );
 }

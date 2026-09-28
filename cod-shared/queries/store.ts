@@ -53,6 +53,12 @@ import {
   type CatalogSnapshot,
 } from "./catalog-snapshot";
 import { resolveCartOffers } from "./offers-cart";
+import { parseCheckoutFormPolicy } from "../checkout-form/policy";
+import { resolveStorefrontWidget } from "../whatsapp-widget/config";
+import {
+  serializeCustomFieldAnswers,
+  type CustomFieldAnswer,
+} from "../checkout-form/apply";
 
 export interface StoreOrderData {
   customerName: string;
@@ -90,6 +96,13 @@ export interface StoreOrderData {
   }>;
   /** Resolved landing page id — set by the caller from landingPageSlug (best-effort). */
   landingPageId?: string | null;
+  /**
+   * Checkout Form Policy capture. Both are already enforced and normalised by
+   * applyCheckoutPolicy in the handler — the engine stores what it is handed
+   * and never re-derives them, so there is exactly one place these rules live.
+   */
+  customerEmail?: string;
+  customFieldAnswers?: CustomFieldAnswer[];
   fbc?: string;
   fbp?: string;
   ipAddress?: string;
@@ -122,8 +135,20 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
     getFooterPages(db, storeId, store.lang as PageLocale),
     getPublicLegalContact(db, storeId),
   ]);
+  // The raw policy column never leaves the server. This function spreads the
+  // whole store row, so a column is public the moment it exists unless it is
+  // removed by name here — the storefront gets the resolved projection instead,
+  // which is also the only shape a theme should ever have to understand.
+  const { checkoutFormJson, whatsappWidgetJson, ...publicStore } = store;
+
   return {
-    ...store,
+    ...publicStore,
+    checkoutForm: parseCheckoutFormPolicy(checkoutFormJson),
+    // Null whenever there is nothing to render — switched off, no number, or a
+    // number that no longer normalises. The theme holds one rule about this
+    // feature: render it, or don't. Costs no extra query: the column rides the
+    // store row this function already selected in full.
+    whatsapp: resolveStorefrontWidget(whatsappWidgetJson),
     pixelId: tracking.pixelId,
     conversionEvent: tracking.conversionEvent,
     pages,
@@ -827,6 +852,10 @@ export async function createStoreOrder(
       landingPageId: data.landingPageId ?? null,
       createdAt: now,
       updatedAt: now,
+      // Ride the existing insert rather than adding statements: the commit is
+      // one atomic batch and D1 caps how many statements it may carry.
+      customerEmail: data.customerEmail ?? null,
+      customFieldsJson: serializeCustomFieldAnswers(data.customFieldAnswers ?? []),
     }),
   ];
 

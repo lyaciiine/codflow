@@ -60,7 +60,15 @@
     "type_override_note": "مبلغ العميل يبقى دون تغيير — يتغير فقط كيفية إرسال الطرد.",
     "no_desk_match": "لا يوجد مكتب يطابق البحث",
     "no_desks_in_wilaya": "هذا الناقل لا يملك مكتب استلام في",
-    "no_desks_switch_hint": "بدّل نوع التوصيل إلى المنزل لإرسال هذا الطلب."
+    "no_desks_switch_hint": "بدّل نوع التوصيل إلى المنزل لإرسال هذا الطلب.",
+    "missing_address_title": "لا يوجد عنوان لهذا الطلب",
+    "missing_address_hint": "التوصيل إلى المنزل يتطلب عنوانًا. عدّل الطلب لإضافته، أو بدّل إلى الاستلام من المكتب."
+  },
+  "edit_dialog": {
+    "title": "تعديل الطلب",
+    "success": "تم تحديث الطلب",
+    "error": "فشل تحديث الطلب",
+    "save": "حفظ التغييرات"
   },
   "filters": {
     "status": "الحالة",
@@ -195,7 +203,9 @@
     "tracking_return_received": "تم استلام المرتجع",
     "tracking_delivered": "تم التسليم",
     "tracking_encaissed": "تم تحصيل المبلغ",
-    "tracking_payed": "تم الدفع"
+    "tracking_payed": "تم الدفع",
+    "custom_answers": "إجابات العميل",
+    "custom_answers_note": "إجابات أسئلتك الخاصة في نموذج الطلب. لا تُرسل أبداً لشركات التوصيل."
   },
   "next_status": {
     "new": "تأكيد الطلب",
@@ -225,6 +235,8 @@
     "customer_name_placeholder": "أدخل اسم العميل",
     "phone_label": "رقم الهاتف",
     "phone_placeholder": "0555123456",
+    "email_label": "البريد الإلكتروني (اختياري)",
+    "email_placeholder": "customer@example.com",
     "wilaya_label": "الولاية",
     "wilaya_placeholder": "اختر الولاية",
     "commune_label": "البلدية",

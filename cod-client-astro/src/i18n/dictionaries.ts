@@ -22,6 +22,8 @@ import arTeam from "../../locales/ar/team.json";
 import arMcp from "../../locales/ar/mcp.json";
 import arProfile from "../../locales/ar/profile.json";
 import arStorePages from "../../locales/ar/store-pages.json";
+import arCheckoutForm from "../../locales/ar/checkout-form.json";
+import arWhatsapp from "../../locales/ar/whatsapp.json";
 
 import enOrders from "../../locales/en/orders.json";
 import enAuth from "../../locales/en/auth.json";
@@ -43,6 +45,8 @@ import enTeam from "../../locales/en/team.json";
 import enMcp from "../../locales/en/mcp.json";
 import enProfile from "../../locales/en/profile.json";
 import enStorePages from "../../locales/en/store-pages.json";
+import enCheckoutForm from "../../locales/en/checkout-form.json";
+import enWhatsapp from "../../locales/en/whatsapp.json";
 
 import frOrders from "../../locales/fr/orders.json";
 import frAuth from "../../locales/fr/auth.json";
@@ -64,17 +68,19 @@ import frTeam from "../../locales/fr/team.json";
 import frMcp from "../../locales/fr/mcp.json";
 import frProfile from "../../locales/fr/profile.json";
 import frStorePages from "../../locales/fr/store-pages.json";
+import frCheckoutForm from "../../locales/fr/checkout-form.json";
+import frWhatsapp from "../../locales/fr/whatsapp.json";
 
 import type { Locale } from "./config";
 
-export const NAMESPACES = ["orders", "auth", "common", "navigation", "dashboard", "customers", "customer-groups", "customer-tags", "reviews", "products", "product-groups", "offers", "landing-pages", "delivery", "delivery_companies", "settings", "team", "mcp", "profile", "store-pages"] as const;
+export const NAMESPACES = ["orders", "auth", "common", "navigation", "dashboard", "customers", "customer-groups", "customer-tags", "reviews", "products", "product-groups", "offers", "landing-pages", "delivery", "delivery_companies", "settings", "team", "mcp", "profile", "store-pages", "checkout-form", "whatsapp"] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 export type Dict = Record<string, unknown>;
 
 const DICTS: Record<Locale, Partial<Record<Namespace, Dict>>> = {
-  ar: { orders: arOrders, auth: arAuth, common: arCommon, navigation: arNavigation, dashboard: arDashboard, customers: arCustomers, "customer-groups": arCustomerGroups, "customer-tags": arCustomerTags, reviews: arReviews, products: arProducts, "product-groups": arProductGroups, offers: arOffers, "landing-pages": arLandingPages, delivery: arDelivery, delivery_companies: arDeliveryCompanies, settings: arSettings, team: arTeam, mcp: arMcp, profile: arProfile, "store-pages": arStorePages },
-  en: { orders: enOrders, auth: enAuth, common: enCommon, navigation: enNavigation, dashboard: enDashboard, customers: enCustomers, "customer-groups": enCustomerGroups, "customer-tags": enCustomerTags, reviews: enReviews, products: enProducts, "product-groups": enProductGroups, offers: enOffers, "landing-pages": enLandingPages, delivery: enDelivery, delivery_companies: enDeliveryCompanies, settings: enSettings, team: enTeam, mcp: enMcp, profile: enProfile, "store-pages": enStorePages },
-  fr: { orders: frOrders, auth: frAuth, common: frCommon, navigation: frNavigation, dashboard: frDashboard, customers: frCustomers, "customer-groups": frCustomerGroups, "customer-tags": frCustomerTags, reviews: frReviews, products: frProducts, "product-groups": frProductGroups, offers: frOffers, "landing-pages": frLandingPages, delivery: frDelivery, delivery_companies: frDeliveryCompanies, settings: frSettings, team: frTeam, mcp: frMcp, profile: frProfile, "store-pages": frStorePages },
+  ar: { orders: arOrders, auth: arAuth, common: arCommon, navigation: arNavigation, dashboard: arDashboard, customers: arCustomers, "customer-groups": arCustomerGroups, "customer-tags": arCustomerTags, reviews: arReviews, products: arProducts, "product-groups": arProductGroups, offers: arOffers, "landing-pages": arLandingPages, delivery: arDelivery, delivery_companies: arDeliveryCompanies, settings: arSettings, team: arTeam, mcp: arMcp, profile: arProfile, "store-pages": arStorePages, "checkout-form": arCheckoutForm, whatsapp: arWhatsapp },
+  en: { orders: enOrders, auth: enAuth, common: enCommon, navigation: enNavigation, dashboard: enDashboard, customers: enCustomers, "customer-groups": enCustomerGroups, "customer-tags": enCustomerTags, reviews: enReviews, products: enProducts, "product-groups": enProductGroups, offers: enOffers, "landing-pages": enLandingPages, delivery: enDelivery, delivery_companies: enDeliveryCompanies, settings: enSettings, team: enTeam, mcp: enMcp, profile: enProfile, "store-pages": enStorePages, "checkout-form": enCheckoutForm, whatsapp: enWhatsapp },
+  fr: { orders: frOrders, auth: frAuth, common: frCommon, navigation: frNavigation, dashboard: frDashboard, customers: frCustomers, "customer-groups": frCustomerGroups, "customer-tags": frCustomerTags, reviews: frReviews, products: frProducts, "product-groups": frProductGroups, offers: frOffers, "landing-pages": frLandingPages, delivery: frDelivery, delivery_companies: frDeliveryCompanies, settings: frSettings, team: frTeam, mcp: frMcp, profile: frProfile, "store-pages": frStorePages, "checkout-form": frCheckoutForm, whatsapp: frWhatsapp },
 };
 
 export function getDict(locale: Locale, ns: Namespace): Dict {

@@ -13,6 +13,8 @@ interface NewOrderCustomerCardProps {
   setCustomerName: (val: string) => void;
   phone: string;
   setPhone: (val: string) => void;
+  customerEmail: string;
+  setCustomerEmail: (val: string) => void;
   wilayaId: string;
   setWilayaId: (val: string) => void;
   communeId: string;
@@ -39,6 +41,8 @@ export function NewOrderCustomerCard({
   setCustomerName,
   phone,
   setPhone,
+  customerEmail,
+  setCustomerEmail,
   wilayaId,
   setWilayaId,
   communeId,
@@ -133,6 +137,21 @@ export function NewOrderCustomerCard({
               onChange={(event) => setPhone(event.currentTarget.value)}
               placeholder={t("form.phone_placeholder")}
               inputMode="tel"
+              dir="ltr"
+            />
+          </Field>
+          {/* Optional on this path whatever the storefront asks for: staff on a
+              call either have an address or they do not, and a required box
+              only gets a made-up value typed into it. */}
+          <Field label={t("form.email_label")} error={errors.customerEmail}>
+            <Input
+              type="email"
+              value={customerEmail}
+              onChange={(event) => setCustomerEmail(event.currentTarget.value)}
+              placeholder={t("form.email_placeholder")}
+              inputMode="email"
+              autoComplete="email"
+              maxLength={254}
               dir="ltr"
             />
           </Field>

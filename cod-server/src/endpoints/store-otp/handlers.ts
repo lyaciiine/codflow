@@ -13,7 +13,7 @@ import { getOtpConfigRaw } from "../../../../cod-shared/queries/otp-config";
 import { BusinessLogicError, ValidationError, ExternalApiError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { createDzverifyClient, DzverifyError, DZVERIFY_ERRORS } from "./dzverify";
-import { normalizeAlgerianPhone } from "./phone";
+import { normalizeAlgerianPhone } from "../../../../cod-shared/lib/phone";
 import { signOtpToken } from "./token";
 import { createOtpSendGuards, recordOtpSend } from "./guards";
 

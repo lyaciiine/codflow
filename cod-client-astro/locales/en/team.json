@@ -153,6 +153,8 @@
     "abandonedOrders": "Abandoned Orders",
     "landingPages": "Landing Pages",
     "storePages": "Store Pages",
+    "checkoutForm": "Checkout Form",
+    "whatsappWidget": "WhatsApp Widget",
     "mcp": "AI Agents (MCP)",
     "settings": "Settings"
   },

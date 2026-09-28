@@ -76,6 +76,13 @@ export interface OrderBase {
   deliveryTime: string | null;
   deliveryAttempts: number | null;
   notes: string | null;
+  /**
+   * Captured at order time when the merchant enabled the email field. A
+   * snapshot, like customerName — never re-read from the customer record.
+   */
+  customerEmail?: string | null;
+  /** Answers to the merchant's custom questions, as stored with the order. */
+  customFieldsJson?: string | null;
   photos: string | null;
   weight: number | null;
   isFragile: boolean | null;

@@ -46,6 +46,7 @@ export function NewOrderForm() {
   const [customerId, setCustomerId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [wilayaId, setWilayaId] = useState("");
   const [communeId, setCommuneId] = useState("");
   const [address, setAddress] = useState("");
@@ -198,6 +199,7 @@ export function NewOrderForm() {
     setCustomerSearch("");
     setCustomerName("");
     setPhone("");
+    setCustomerEmail("");
     setWilayaId("");
     setCommuneId("");
     setCommunes([]);
@@ -250,6 +252,8 @@ export function NewOrderForm() {
         customerId: customerId || crypto.randomUUID(),
         customerName: customerName.trim(),
         phone: phone.trim(),
+        // Empty box means "no email", never an empty string in the column.
+        customerEmail: customerEmail.trim() || undefined,
         wilayaId: Number(wilayaId),
         communeId,
         address: address.trim() || undefined,
@@ -315,6 +319,8 @@ export function NewOrderForm() {
             setCustomerName={setCustomerName}
             phone={phone}
             setPhone={setPhone}
+            customerEmail={customerEmail}
+            setCustomerEmail={setCustomerEmail}
             wilayaId={wilayaId}
             setWilayaId={setWilayaId}
             communeId={communeId}

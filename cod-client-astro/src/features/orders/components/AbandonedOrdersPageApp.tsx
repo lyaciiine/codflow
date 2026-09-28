@@ -687,7 +687,7 @@ function AbandonedOrdersView() {
 export default function AbandonedOrdersPageApp() {
   return (
     <RequireAuth>
-      <DashboardChrome currentPath="/orders/abandoned">
+      <DashboardChrome currentPath="/orders/abandoned" wide>
         <AbandonedOrdersView />
       </DashboardChrome>
     </RequireAuth>

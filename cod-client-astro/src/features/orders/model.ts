@@ -242,6 +242,21 @@ export function canDeleteOrderFromDetail(status: OrderStatus): boolean {
   return status === "new" || status === "preparing";
 }
 
+/**
+ * Whether the order's customer/destination fields can still be edited.
+ * Mirrors the server's PATCH /orders/{id} guards: once a tracking number
+ * exists the label is printed (edit the shipment instead), and returned /
+ * cancelled orders are already reconciled.
+ */
+export function canEditOrder(
+  order: Pick<OrderListItem, "status" | "trackingNumber">,
+): boolean {
+  return (
+    !order.trackingNumber &&
+    !["returned", "cancelled"].includes(order.status)
+  );
+}
+
 export function orderStatusFlow(
   order: Pick<OrderListItem, "deliveryMethod" | "driverId" | "trackingNumber">,
 ): OrderStatus[] {

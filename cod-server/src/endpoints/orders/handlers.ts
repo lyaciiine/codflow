@@ -171,6 +171,7 @@ export async function createOrder(c: Context<AppContext>) {
       communeId: validated.communeId ?? null,
       city: validated.city || null,
       address: validated.address || null,
+      customerEmail: validated.customerEmail ?? null,
       price: validated.price,
       notes: validated.notes || null,
       status: "new" as const,
@@ -231,6 +232,119 @@ export async function createOrder(c: Context<AppContext>) {
   } catch (error) {
     throw error;
   }
+}
+
+/**
+ * PATCH /orders/:id
+ * Edit customer/destination fields on an order — how a merchant records an
+ * address collected over the phone when the checkout hid the field.
+ *
+ * Blocked once the parcel is with a carrier (the label already carries the
+ * old details — route those edits through PATCH /orders/:id/update-shipment)
+ * and on terminal states, whose books are already reconciled.
+ */
+export async function updateOrder(c: Context<AppContext>) {
+  const db = getDb(c.env.DB);
+  const orderId = c.req.param("id");
+
+  if (!orderId) {
+    throw new ValidationError("Order ID is required", ERROR_CODES.REQUIRED_FIELD_MISSING);
+  }
+
+  const order = await queries.getOrderById(db, orderId);
+  if (!order) {
+    throw new NotFoundError("Order", orderId);
+  }
+
+  if (order.trackingNumber) {
+    throw new BusinessLogicError(
+      `Order already dispatched — tracking number: ${order.trackingNumber}`,
+      ERROR_CODES.ORDER_ALREADY_DISPATCHED,
+      { orderId, trackingNumber: order.trackingNumber }
+    );
+  }
+
+  const terminalStatuses = ["returned", "cancelled"];
+  if (terminalStatuses.includes(order.status)) {
+    throw new BusinessLogicError(
+      `Cannot edit a ${order.status} order — it was already reconciled.`,
+      ERROR_CODES.INVALID_STATUS_TRANSITION,
+      { orderId, currentStatus: order.status }
+    );
+  }
+
+  const bodyData: any = (c.req as any).valid?.("json");
+  const validated: validation.UpdateOrderInput =
+    bodyData ?? validation.updateOrderSchema.parse(await c.req.json());
+
+  // Reference-table checks: dispatch re-validates, but an edit should fail
+  // with an actionable 400 instead of a per-parcel carrier rejection later.
+  if (validated.wilayaId !== undefined) {
+    const wilayaRow = await db
+      .select({ id: wilayas.id })
+      .from(wilayas)
+      .where(eq(wilayas.id, validated.wilayaId))
+      .get();
+    if (!wilayaRow) {
+      throw new ValidationError("Wilaya not found in reference tables", ERROR_CODES.MISSING_WILAYA_COMMUNE, { orderId, wilayaId: validated.wilayaId });
+    }
+  }
+  if (validated.communeId !== undefined) {
+    const communeRow = await db
+      .select({ id: communes.id, wilayaId: communes.wilayaId })
+      .from(communes)
+      .where(eq(communes.id, validated.communeId))
+      .get();
+    if (!communeRow) {
+      throw new ValidationError("Commune not found in reference tables", ERROR_CODES.MISSING_WILAYA_COMMUNE, { orderId, communeId: validated.communeId });
+    }
+    if (
+      validated.wilayaId !== undefined &&
+      communeRow.wilayaId !== validated.wilayaId
+    ) {
+      throw new ValidationError("Commune does not belong to the selected wilaya", ERROR_CODES.MISSING_WILAYA_COMMUNE, { orderId, communeId: validated.communeId, wilayaId: validated.wilayaId });
+    }
+  }
+
+  // Reject a home delivery whose address the edit itself empties. Edits that
+  // touch neither field pass through — a phone-collected order may legitimately
+  // have no address yet, and the dispatch guard still fails closed.
+  if (validated.address !== undefined || validated.deliveryType !== undefined) {
+    const resultAddress = validated.address !== undefined ? validated.address : order.address;
+    const resultDeliveryType = validated.deliveryType ?? order.deliveryType;
+    if (resultDeliveryType === "home" && !(resultAddress ?? "").trim()) {
+      throw new ValidationError(
+        "Address is required for home delivery",
+        ERROR_CODES.MISSING_ADDRESS,
+        { orderId }
+      );
+    }
+  }
+
+  await queries.updateOrder(db, orderId, {
+    customerName: validated.customerName,
+    phone: validated.phone,
+    customerEmail: validated.customerEmail,
+    wilayaId: validated.wilayaId,
+    communeId: validated.communeId,
+    city: validated.city,
+    address: validated.address,
+    deliveryType: validated.deliveryType,
+    notes: validated.notes,
+  });
+
+  const actor = c.get("user");
+  await logActivity(db, actor, ACTIONS.ORDER_UPDATED, {
+    type: "order", id: orderId, label: order.orderNumber,
+  }, { fields: Object.keys(validated) });
+
+  const updated = await queries.getOrderById(db, orderId);
+
+  return c.json({
+    success: true,
+    data: updated,
+    message: "Order updated successfully",
+  }, 200);
 }
 
 /**

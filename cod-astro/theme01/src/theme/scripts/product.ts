@@ -14,6 +14,8 @@ import {
 } from "./delivery-fields";
 // fbq only exists when the merchant configured a pixel — one shared guard.
 import { trackAt } from "./pixel";
+import { initCustomFields } from "./custom-fields";
+import { initRequiredSelects } from "./select-required";
 
 export function initProductPage() {
   // ── DATA BRIDGE ────────────────────────────────────────────────────────────
@@ -566,6 +568,16 @@ export function initProductPage() {
   form?.addEventListener("submit", () => {
     if (submitBtn) submitBtn.disabled = true;
   });
+
+  // The merchant's own questions, serialised into the one hidden JSON input the
+  // platform action whitelists. No-op for a store with no custom fields.
+  initCustomFields(form);
+
+  // A required dropdown cannot rely on the browser: its value lives in a hidden
+  // input, which is barred from constraint validation. Bound on document in the
+  // capture phase, so it runs before the submit guard above — a blocked submit
+  // must never leave the confirm button disabled.
+  initRequiredSelects();
 
   // ── ALGERIAN PHONE VALIDATION ──────────────────────────────────────────────
   // Normalizes to the canonical local form "05XXXXXXXX" on blur and blocks

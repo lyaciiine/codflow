@@ -78,6 +78,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
           customerId: orders.customerId,
           customerName: orders.customerName,
           phone: orders.phone,
+          customerEmail: orders.customerEmail,
           wilayaId: orders.wilayaId,
           communeId: orders.communeId,
           city: orders.city,
@@ -253,6 +254,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
             eventSourceUrl: finalEventSourceUrl,
             userData: {
               phone: data.order.phone,
+              email: data.order.customerEmail,
               firstName,
               lastName,
               externalId: data.order.customerId,

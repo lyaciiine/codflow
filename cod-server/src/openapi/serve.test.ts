@@ -745,6 +745,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
     expect(spec.paths["/api/orders"]?.post?.operationId).toBe("createOrder");
     expect(spec.paths["/api/orders/bulk-dispatch"]?.post?.operationId).toBe("bulkDispatch");
     expect(spec.paths["/api/orders/{id}"]?.get?.operationId).toBe("getOrder");
+    expect(spec.paths["/api/orders/{id}"]?.patch?.operationId).toBe("updateOrder");
     expect(spec.paths["/api/orders/{id}"]?.delete?.operationId).toBe("deleteOrder");
     expect(spec.paths["/api/orders/{id}/status"]?.patch?.operationId).toBe("updateOrderStatus");
     expect(spec.paths["/api/orders/{id}/assign-driver"]?.patch?.operationId).toBe("assignDriver");

@@ -16,6 +16,7 @@ import * as shipmentOps from "./shipment-operations";
 
 import {
   createOrderSchema,
+  updateOrderSchema,
   updateOrderStatusSchema,
   assignDriverSchema,
   returnOrderProductSchema,
@@ -108,6 +109,44 @@ const createOrderRoute = defineRoute({
     },
   },
   handler: handlers.createOrder,
+});
+
+const updateOrderRoute = defineRoute({
+  method: "patch",
+  path: "/{id}",
+  auth: { scope: SCOPES.ORDERS_UPDATE },
+  tags: ["Orders"],
+  summary: "Update order",
+  description: `Partially edits an order's customer and destination fields: \`customerName\`, \`phone\`, \`customerEmail\`, \`wilayaId\`, \`communeId\`, \`city\`, \`address\`, \`deliveryType\`, \`notes\`. All fields optional — omitted fields stay untouched.
+
+This is how a merchant records an address collected over the phone when the checkout hid the address field.
+
+The linked customer record is updated in the same operation with the fields this request changes (name, phone, wilaya/commune, address) — an order and its customer never disagree on contact details. If the corrected phone already belongs to a different customer record, the order is re-pointed to that record instead of overwriting its phone. \`customerEmail\` is stored on the order only.
+
+\`customerEmail\` / \`address\`: an empty (or whitespace) value clears the field; a value is stored trimmed (email also lower-cased), matching POST /orders.
+
+**Rejected with 422** when the order already has a tracking number (edit the shipment via PATCH /orders/{id}/update-shipment instead) or is in a terminal state (returned/cancelled). **Rejected with 400 MISSING_ADDRESS** when the edit would leave a home delivery without a street address. Wilaya/commune are checked against the reference tables (400 MISSING_WILAYA_COMMUNE).`,
+  operationId: "updateOrder",
+  params: IdParamSchema,
+  body: updateOrderSchema,
+  responses: {
+    200: {
+      description: "Order updated — returns the refreshed order detail",
+      content: jsonContent(SuccessWithMessageSchema(OrderDetailSchema)),
+    },
+    400: {
+      description:
+        "Validation error — bad phone/email, home delivery left without an address (MISSING_ADDRESS), or unknown wilaya/commune (MISSING_WILAYA_COMMUNE)",
+    },
+    404: {
+      description: "Order not found",
+    },
+    422: {
+      description:
+        "Order already dispatched (ORDER_ALREADY_DISPATCHED) or terminal (INVALID_STATUS_TRANSITION)",
+    },
+  },
+  handler: handlers.updateOrder,
 });
 
 const deleteOrderRoute = defineRoute({
@@ -665,6 +704,7 @@ router.openapi(bulkDispatchRoute.route, bulkDispatchRoute.handler);
 
 router.openapi(getOrderRoute.route, getOrderRoute.handler);
 router.openapi(createOrderRoute.route, createOrderRoute.handler);
+router.openapi(updateOrderRoute.route, updateOrderRoute.handler);
 router.openapi(deleteOrderRoute.route, deleteOrderRoute.handler);
 router.openapi(updateStatusRoute.route, updateStatusRoute.handler);
 router.openapi(assignDriverRoute.route, assignDriverRoute.handler);

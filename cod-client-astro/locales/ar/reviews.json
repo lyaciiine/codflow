@@ -12,6 +12,14 @@
   "status_approved": "مقبول",
   "status_rejected": "مرفوض",
   "order_label": "طلب",
+  "table": {
+    "customer": "العميل",
+    "product": "المنتج",
+    "rating": "التقييم",
+    "review": "المراجعة",
+    "status": "الحالة",
+    "date": "التاريخ"
+  },
   "action_approve": "قبول",
   "action_reject": "رفض",
   "action_delete": "حذف",
@@ -25,8 +33,5 @@
   "toast_error_delete": "فشل حذف التقييم",
   "error_load": "تعذر تحميل التقييمات",
   "error_not_found": "التقييم غير موجود",
-  "error_generic": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
-  "page_prev": "السابق",
-  "page_next": "التالي",
-  "page_of": "صفحة {current} من {total}"
+  "error_generic": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
 }

@@ -1,6 +1,12 @@
 ---
 import { actions } from "astro:actions";
-import type { Product, ProductVariant, Offer, StorePageLink } from "@/core/api/types";
+import type {
+  Product,
+  ProductVariant,
+  Offer,
+  StorePageLink,
+  CheckoutFormPolicy,
+} from "@/core/api/types";
 import type { StoreFrontContent } from "@/theme/config/content";
 import { Icon } from "astro-icon/components";
 import { resolveCheckoutConsent } from "@/theme/utils/checkout-consent";
@@ -31,9 +37,15 @@ interface Props {
   landingPageSlug?: string | null;
   /** For the pre-order consent line — resolved by kind, never a hardcoded slug. */
   pages?: StorePageLink[];
+  /**
+   * The merchant's order-form configuration (config.checkoutForm). Passed
+   * straight through to CustomerFields, which defaults it to today's form when
+   * the server is older than the feature.
+   */
+  formPolicy?: CheckoutFormPolicy;
 }
 
-const { product, content, fieldErrors, serverError, basePrice, defaultVariant, cur, isRTL, offers, defaultVariantId, isOutOfStock = false, otpEnabled = false, turnstileEnabled = false, turnstileSiteKey = null, landingPageSlug = null, pages = [] } = Astro.props;
+const { product, content, fieldErrors, serverError, basePrice, defaultVariant, cur, isRTL, offers, defaultVariantId, isOutOfStock = false, otpEnabled = false, turnstileEnabled = false, turnstileSiteKey = null, landingPageSlug = null, pages = [], formPolicy } = Astro.props;
 
 // Skipped entirely when either page is missing — never a dangling sentence
 // or a link to nowhere. See checkout-consent.ts for the split logic and its
@@ -111,6 +123,7 @@ const comparePrice = defaultVariant?.compareAtPrice ?? product.compareAtPrice ??
       content={content}
       fieldErrors={fieldErrors}
       isRTL={isRTL}
+      formPolicy={formPolicy}
     />
 
     {otpEnabled && <OtpStep content={content} isRTL={isRTL} />}

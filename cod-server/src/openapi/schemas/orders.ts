@@ -178,6 +178,14 @@ const OrderBaseSchema = z.object({
   // Timestamps
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+
+  // Checkout form capture
+  customerEmail: z.string().nullable().optional().openapi({
+    description: "Email supplied at order time",
+  }),
+  customFieldsJson: z.string().nullable().optional().openapi({
+    description: "Custom checkout fields snapshot JSON",
+  }),
 });
 
 // ─── List View (for GET /orders) ──────────────────────────────────────────────

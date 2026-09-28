@@ -1,0 +1,28 @@
+-- WhatsApp chat widget on the storefront
+-- (report-md/WHATSAPP_WIDGET_PLAN.md, Slice 0).
+--
+-- One additive nullable column, inert until a merchant opens the new WhatsApp
+-- page and saves a number. Applying this migration changes nothing for any
+-- store that exists today.
+--
+-- stores.whatsapp_widget_json: the widget's whole configuration — the number,
+--   the identity shown in the panel (name, caption, avatar), the message texts,
+--   the appearance, and which storefront surfaces it appears on. NULL means
+--   "no widget", which is what every store reads until it opts in, so the
+--   storefront ships no widget markup at all.
+--   Rollback for the whole feature is `UPDATE stores SET whatsapp_widget_json
+--   = NULL` — there is nothing to reverse, because the widget stores nothing
+--   about shoppers and writes no other row.
+--
+--   One JSON column rather than a table: `getStoreConfig` already selects the
+--   full `stores` row for every storefront page render
+--   (cod-shared/queries/store.ts), so this config costs zero extra reads. A
+--   `store_whatsapp_widget` table would be a sixth round trip on the hottest
+--   read path in the product, for a feature most stores leave off. The
+--   OTP/Turnstile/email tables are the right shape for credentials with their
+--   own lifecycle; this is presentation config with none.
+--
+--   One column rather than a column per setting: each new `stores` column
+--   breaks every positional mock-db fixture in cod-server (see
+--   src/test-utils/d1.ts), and the field set is expected to grow.
+ALTER TABLE `stores` ADD COLUMN `whatsapp_widget_json` text;

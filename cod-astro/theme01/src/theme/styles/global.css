@@ -93,6 +93,11 @@
   /* App safe areas */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* WhatsApp brand tokens */
+  --clr-whatsapp: #25d366;
+  --clr-whatsapp-deep: #128c7e;
+  --wa-gap: 0.75rem;
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
@@ -333,6 +338,91 @@ textarea.form-input {
 /* ── Text Utilities ──────────────────────────────────────────────────────── */
 .text-balance { text-wrap: balance; }
 .text-pretty { text-wrap: pretty; }
+
+/* ── WhatsApp Widget Layering & Collisions ───────────────────────────────── */
+.wa-widget {
+  --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
+  position: fixed;
+  bottom: var(--wa-bottom);
+  z-index: 40;
+}
+
+.wa-widget[data-position="right"] {
+  right: var(--wa-gap);
+  left: auto;
+}
+
+.wa-widget[data-position="left"] {
+  left: var(--wa-gap);
+  right: auto;
+}
+
+body.has-mobile-nav .wa-widget {
+  --wa-bottom: calc(4rem + var(--safe-bottom) + var(--wa-gap));
+}
+
+@media (min-width: 640px) {
+  body.has-mobile-nav .wa-widget {
+    --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
+  }
+}
+
+body[data-sticky-cta="visible"] .wa-widget {
+  --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap) + 3.5rem);
+}
+
+body.has-mobile-nav[data-sticky-cta="visible"] .wa-widget {
+  --wa-bottom: calc(4rem + var(--safe-bottom) + var(--wa-gap) + 3.5rem);
+}
+
+@media (min-width: 1024px) {
+  body[data-sticky-cta="visible"] .wa-widget {
+    --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
+  }
+  body.has-mobile-nav[data-sticky-cta="visible"] .wa-widget {
+    --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
+  }
+}
+
+/* ── WhatsApp Panel Positioning ──────────────────────────────────────────── */
+.wa-panel {
+  /* Mobile: fixed positioning centered horizontally, anchored to bottom with safe spacing */
+  position: fixed;
+  bottom: calc(var(--wa-bottom) + 4.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100vw - 2rem);
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+/* Desktop: absolute positioning relative to launcher, positioned above it */
+@media (min-width: 640px) {
+  .wa-panel {
+    position: absolute;
+    bottom: calc(100% + 0.75rem);
+    left: auto;
+    transform: none;
+    width: 20rem;
+  }
+  
+  /* Right-aligned widget: panel aligns to the right edge */
+  .wa-widget[data-position="right"] .wa-panel {
+    right: 0;
+    left: auto;
+  }
+  
+  /* Left-aligned widget: panel aligns to the left edge */
+  .wa-widget[data-position="left"] .wa-panel {
+    left: 0;
+    right: auto;
+  }
+}
+
+/* Ensure panel doesn't exceed viewport on mobile */
+.wa-panel {
+  max-height: calc(100vh - var(--wa-bottom) - 5.5rem);
+}
 
 /* ── Rich description (merchant-authored HTML) ───────────────────────────── */
 /*

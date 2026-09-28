@@ -468,6 +468,94 @@ describe("Orders — targeted business-logic tests", () => {
       const body: any = await res.json();
       expect(body.code).toBe(ERROR_CODES.MISSING_STATION_CODE);
     });
+
+    it("returns 400 for home order with empty address", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ deliveryType: "home", address: "" }) as any
+      );
+      vi.mocked(deliveryCompanyQueries.getDeliveryCompanyRaw).mockResolvedValue(
+        companyRow() as any
+      );
+      mockDb = {
+        select: vi.fn(() => ({
+          from: vi.fn(() => ({
+            where: vi.fn(() => ({
+              get: vi.fn(async () => ({ name: "Alger", nameAr: "الجزائر" })),
+            })),
+          })),
+        })),
+      };
+
+      const res = await app.request("/api/orders/ord_1/dispatch", { method: "POST" });
+
+      expect(res.status).toBe(400);
+      const body: any = await res.json();
+      expect(body.code).toBe(ERROR_CODES.MISSING_ADDRESS);
+    });
+  });
+
+  // ─── 4b. Bulk dispatch home-address guard ─────────────────────────────────
+
+  describe("POST /api/orders/bulk-dispatch — home address guard", () => {
+    it("skips a home order without an address instead of dispatching it", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ deliveryType: "home", address: null }) as any
+      );
+      vi.mocked(deliveryCompanyQueries.getDeliveryCompanyRaw).mockResolvedValue(
+        companyRow() as any
+      );
+      vi.mocked(registry.getProvider).mockReturnValue({
+        createShipmentsBulk: vi.fn(),
+      } as any);
+
+      const res = await app.request("/api/orders/bulk-dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: "comp_1", orderIds: ["ord_1"] }),
+      });
+
+      expect(res.status).toBe(400);
+      const body: any = await res.json();
+      expect(body.results[0].error).toContain("Missing address");
+    });
+
+    it("dispatches a stop_desk order that has no street address", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ deliveryType: "stop_desk", address: null, stationCode: "16A" }) as any
+      );
+      vi.mocked(deliveryCompanyQueries.getDeliveryCompanyRaw).mockResolvedValue(
+        companyRow() as any
+      );
+      const createShipmentsBulk = vi.fn(async () => [
+        { trackingNumber: "TRK100", labelUrl: null, rawResponse: "{}" },
+      ]);
+      vi.mocked(registry.getProvider).mockReturnValue({ createShipmentsBulk } as any);
+      vi.mocked(shipments.createShipmentRecord).mockResolvedValue("shp_1" as any);
+      vi.mocked(shipments.logApiCall).mockResolvedValue(undefined as any);
+      vi.mocked(queries.updateOrderTracking).mockResolvedValue(undefined as any);
+      vi.mocked(queries.updateOrderStatus).mockResolvedValue(undefined as any);
+      mockDb = {
+        select: vi.fn(() => ({
+          from: vi.fn(() => ({
+            where: vi.fn(() => ({
+              get: vi.fn(async () => ({ name: "Alger", nameAr: "الجزائر" })),
+            })),
+          })),
+        })),
+        insert: vi.fn(() => ({ values: vi.fn(async () => undefined) })),
+        update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => undefined) })) })),
+      };
+
+      const res = await app.request("/api/orders/bulk-dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: "comp_1", orderIds: ["ord_1"] }),
+      });
+
+      expect(res.status).toBe(201);
+      const body: any = await res.json();
+      expect(body.data.results[0].trackingNumber).toBe("TRK100");
+    });
   });
 
   // ─── 5. autoValidate: validation failure silently advances status ──────────

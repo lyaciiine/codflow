@@ -29,3 +29,4 @@ export {
   findPublishedLandingPageIdBySlug,
 } from "../../../../cod-shared/queries/landing-pages";
 export { resolvePublishedPage } from "../../../../cod-shared/queries/store-pages";
+export { getCheckoutFormPolicy } from "../../../../cod-shared/queries/checkout-form";

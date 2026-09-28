@@ -101,6 +101,9 @@ export const fr: StoreFrontContent = {
   formStopDesk: "Bureau de poste",
   formNotesLabel: "Notes",
   formNotesPlaceholder: "Détails supplémentaires pour la livraison...",
+  formEmailLabel: "E-mail",
+  formEmailPlaceholder: "vous@exemple.com",
+  formRequiredField: "Veuillez choisir une option",
   formSubmit: "Confirmer la commande",
   formConfirmNote: "Notre équipe vous contactera pour confirmer votre commande dans les 24 heures",
 
@@ -122,6 +125,19 @@ export const fr: StoreFrontContent = {
   otpErrorGeneric: "Impossible d'envoyer le code — réessayez",
   turnstileErrorFailed: "La vérification de sécurité a échoué — réessayez",
   turnstileVerifying: "Vérification de sécurité en cours — veuillez patienter…",
+
+  // ── WhatsApp contact widget ────────────────────────────────────────────────
+  waOpenChat: "Discuter sur WhatsApp",
+  waCloseChat: "Fermer la discussion",
+  waCaptionDefault: "Répond généralement en quelques minutes",
+  waWelcomeDefault: "Bonjour ! 👋 Comment pouvons-nous vous aider ?",
+  waCtaDefault: "Discuter sur WhatsApp",
+  waPrefillGeneralDefault: "Bonjour, j'ai une question concernant votre boutique",
+  waPrefillProductDefault: "Bonjour, je souhaite me renseigner sur {product} — {url}",
+  waThankYouButtonDefault: "Confirmer votre commande",
+  waPrefillThankYouDefault: "Bonjour {store}, j'ai passé la commande {order}. Veuillez la confirmer.",
+  waComposePlaceholder: "Écrivez votre message ici...",
+  waSend: "Envoyer",
 
   // ── Order summary ─────────────────────────────────────────────────────────
   qtyLabel: "Quantité",

@@ -19,7 +19,7 @@ function Gated() {
     );
   }
   return (
-    <DashboardChrome currentPath="/orders">
+    <DashboardChrome currentPath="/orders" wide>
       <PageHeader
         title={t("page_title")}
         actions={canScope(identity, "orders:create") && (

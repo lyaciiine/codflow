@@ -44,6 +44,8 @@ import {
   type ShippingRates,
 } from "./delivery-fields";
 import { trackInitiateCheckout } from "./pixel";
+import { collectCustomFieldAnswers } from "./custom-fields";
+import { initRequiredSelects } from "./select-required";
 
 /** One controller per page, so a second call is a no-op rather than a duplicate. */
 const controllers = new WeakMap<HTMLElement, () => void>();
@@ -72,6 +74,11 @@ export function initCheckout(): () => void {
   const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement | null;
   const form = document.getElementById("checkout-form") as HTMLFormElement | null;
   const itemsInput = document.getElementById("cart-items-input") as HTMLInputElement | null;
+  // Present only when the merchant added custom fields; null otherwise, and
+  // then there is nothing to serialise.
+  const customFieldResponsesInput = document.getElementById(
+    "custom-field-responses-input",
+  ) as HTMLInputElement | null;
 
   if (!list || !template) return noop;
 
@@ -222,6 +229,11 @@ export function initCheckout(): () => void {
     "submit",
     () => {
       if (itemsInput) itemsInput.value = JSON.stringify(toOrderItems());
+      // The merchant's own questions, same rule: serialised at submit, so the
+      // answers posted are the ones the shopper was looking at.
+      if (customFieldResponsesInput) {
+        customFieldResponsesInput.value = JSON.stringify(collectCustomFieldAnswers(form));
+      }
     },
     { signal },
   );
@@ -236,11 +248,17 @@ export function initCheckout(): () => void {
   render();
   void revalidate();
 
+  // Wilaya, commune and any required dropdown the merchant added keep their
+  // value in a hidden input, which the browser refuses to validate — so the
+  // check is ours. See scripts/select-required.ts.
+  const unbindRequiredSelects = initRequiredSelects();
+
   const teardown = () => {
     aborter.abort();
     unbindDelivery();
     unwatchRates();
     unsubscribe();
+    unbindRequiredSelects();
     controllers.delete(root);
   };
   controllers.set(root, teardown);

@@ -1,0 +1,80 @@
+{
+  "page_title": "Checkout form",
+  "page_subtitle": "Choose which details your storefront asks for, and add questions of your own.",
+  "cache_notice": "Changes can take a few minutes to show on product pages that visitors have already loaded.",
+  "save": "Save changes",
+  "saved_toast": "Checkout form updated",
+  "reset": "Discard changes",
+  "state": {
+    "required": "Required",
+    "optional": "Optional",
+    "hidden": "Hidden"
+  },
+  "fields": {
+    "section_title": "Customer details",
+    "section_subtitle": "What the order form asks every shopper.",
+    "locked_note": "Always required",
+    "customerName": "Full name",
+    "customerName_why": "Carriers need a name for the parcel.",
+    "phone": "Phone number",
+    "phone_why": "How you confirm the order, and how a customer is recognised on their next one.",
+    "wilaya": "Wilaya",
+    "wilaya_why": "Sets the delivery price.",
+    "commune": "Commune",
+    "commune_why": "Sets the delivery price and the carrier's destination.",
+    "address": "Address",
+    "address_hint": "Asked for home delivery only. Cannot be turned off — carriers need it to deliver.",
+    "notes": "Order notes",
+    "notes_hint": "Hiding this makes checkout shorter, and customers can no longer leave delivery instructions.",
+    "email": "Email",
+    "email_hint": "Saved on the order. Becomes required automatically if you start selling digital products."
+  },
+  "delivery": {
+    "section_title": "Delivery options",
+    "section_subtitle": "The choices a shopper sees. At least one must stay on.",
+    "home": "Home delivery",
+    "stop_desk": "Pickup at the carrier's desk",
+    "last_one_hint": "Keep at least one delivery option on — a form with neither takes no orders."
+  },
+  "custom": {
+    "section_title": "Your own questions",
+    "section_subtitle": "Up to {max} extra questions, asked after the delivery details.",
+    "add": "Add a question",
+    "empty": "No extra questions yet.",
+    "label": "Question",
+    "label_placeholder": "e.g. Preferred delivery time",
+    "type": "Answer type",
+    "type_text": "Short text",
+    "type_textarea": "Long text",
+    "type_number": "Number",
+    "type_select": "Choose from a list",
+    "required": "Answer required",
+    "options": "Choices",
+    "option_placeholder": "Choice",
+    "add_option": "Add a choice",
+    "remove_option": "Remove choice",
+    "remove": "Remove question",
+    "move_up": "Move up",
+    "move_down": "Move down",
+    "answers_note": "Answers appear on the order in your dashboard. They are never sent to carriers.",
+    "limit_reached": "You have reached the maximum of {max} questions.",
+    "empty_hint": "Add a question when you need something the standard fields don't cover.",
+    "question_n": "Question {n}"
+  },
+  "errors": {
+    "load_failed": "Could not load the checkout form settings.",
+    "save_failed": "Could not save the checkout form.",
+    "no_delivery_option": "Keep at least one delivery option on — otherwise no one can place an order.",
+    "label_required": "Give every question a title.",
+    "label_too_long": "A question title is too long.",
+    "duplicate_label": "Two questions cannot have the same title.",
+    "options_required": "A list question needs at least one choice.",
+    "duplicate_options": "Choices must be different from each other.",
+    "too_many_options": "Too many choices for one question.",
+    "too_many_fields": "Too many questions."
+  },
+  "status": {
+    "saved": "All changes saved",
+    "unsaved": "Unsaved changes"
+  }
+}

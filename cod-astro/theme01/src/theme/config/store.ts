@@ -43,6 +43,7 @@ export const DEFAULT_CONFIG: StoreConfig = {
   conversionEvent: null,
   pages: [],
   legalContact: null,
+  whatsapp: null,
 };
 
 export interface StoreContext {

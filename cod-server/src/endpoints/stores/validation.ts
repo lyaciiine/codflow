@@ -13,7 +13,7 @@ export const updateStoreSchema = z.object({
    */
   domain: z
     .string()
-    .regex(/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/i, "Domain must be a hostname like store.example.com")
+    .regex(/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/i, "Domain must be a valid hostname like example.com or store.example.com")
     .max(200)
     .nullable()
     .optional(),
@@ -22,7 +22,7 @@ export const updateStoreSchema = z.object({
   bgColor: hexColor.optional(),
   fontFamily: z.string().min(1).max(200).optional(),
   fontUrl: z.string().url().nullable().optional(),
-  lang: z.enum(["ar", "en"]).optional(),
+  lang: z.enum(["ar", "en", "fr"]).optional(),
   currencySymbol: z.string().min(1).max(10).optional(),
   contentJson: z.string().nullable().optional(),
   metaTitle: z.string().max(200).nullable().optional(),

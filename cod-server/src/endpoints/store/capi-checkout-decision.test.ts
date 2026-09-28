@@ -33,6 +33,7 @@ vi.mock("../../../../cod-shared/queries/otp-config", () => ({
   getOtpConfigRaw: vi.fn(async () => undefined),
 }));
 vi.mock("../../../../cod-shared/queries/turnstile-config");
+import { DEFAULT_CHECKOUT_FORM_POLICY } from "../../../../cod-shared/checkout-form/policy";
 
 let harness: TestD1;
 const NOW = () => new Date().toISOString();
@@ -101,6 +102,13 @@ function stubSuccessfulOrderFlow(orderId: string) {
     name: "Karim Benali",
   } as never);
   vi.mocked(storeQueries.resolveDeliveryFee).mockResolvedValue(600 as never);
+  // The order path loads the store's Checkout Form Policy. Mocked to the
+  // defaults here — these suites are about the gate they are named for, and the
+  // defaults are the storefront's behaviour before that feature existed.
+  vi.mocked(storeQueries.getCheckoutFormPolicy).mockResolvedValue({
+    policy: DEFAULT_CHECKOUT_FORM_POLICY,
+    lang: "ar",
+  } as never);
   vi.mocked(storeQueries.priceCartLines).mockReturnValue({ subtotal: 2500 } as never);
   vi.mocked(storeQueries.createStoreOrder).mockResolvedValue({
     id: orderId,

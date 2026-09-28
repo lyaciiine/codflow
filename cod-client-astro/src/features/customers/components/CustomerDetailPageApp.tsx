@@ -4,7 +4,7 @@ import { CustomerDetail } from "@/features/customers/components/CustomerDetail";
 
 function Gated({ customerId }: { customerId: string }) {
   return (
-    <DashboardChrome currentPath={`/customers/${customerId}`}>
+    <DashboardChrome currentPath={`/customers/${customerId}`} wide>
       <CustomerDetail customerId={customerId} />
     </DashboardChrome>
   );

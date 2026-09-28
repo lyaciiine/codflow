@@ -50,6 +50,12 @@ function normaliseName(raw: string): string {
 
 export interface CapiUserData {
   phone: string;
+  /**
+   * Captured at checkout when the merchant enables the email field. Optional
+   * for the same reason the field is: most stores never ask for one, and an
+   * event without it is exactly as valid as it was before.
+   */
+  email?: string | null;
   firstName?: string | null;
   lastName?: string | null;
   externalId?: string | null;
@@ -92,6 +98,16 @@ export async function sendCapiEvent(
     ph: await sha256hex(normalisePhone(ud.phone)),
     country: await sha256hex("dz"),
   };
+  // Email is the strongest identifier Meta matches on after the phone, so it is
+  // sent whenever the shopper gave one — the whole reason orders.customer_email
+  // is worth storing beyond the receipt.
+  //
+  // Hashed raw, with no helper in front of it: sha256hex already lowercases and
+  // strips whitespace, which IS Meta's rule for `em`. The fn/ln normaliser below
+  // must not be used here — it strips punctuation, and an address is an
+  // identifier rather than a name, so "o'brien@x.com" would be hashed as a
+  // mailbox nobody owns and quietly cost the match it was meant to make.
+  if (ud.email) userData.em = await sha256hex(ud.email);
   if (ud.firstName) userData.fn = await sha256hex(normaliseName(ud.firstName));
   if (ud.lastName) userData.ln = await sha256hex(normaliseName(ud.lastName));
   if (ud.externalId) userData.external_id = await sha256hex(ud.externalId);

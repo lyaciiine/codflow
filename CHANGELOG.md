@@ -9,6 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- checkout-form: the storefront order form is configurable per store (migration
+  0031 + `stores.checkout_form_json`) — require or hide the address, notes and
+  email, turn a delivery option off, and add up to 5 questions of the
+  merchant's own. Dashboard → Checkout form, its own page with a live preview of
+  what shoppers will see and `checkout_form:read` / `checkout_form:manage`
+  scopes. A store that never opens it keeps a NULL column, which reads as the
+  original form, so nothing changes until a merchant asks for it; rollback for
+  the whole feature is `UPDATE stores SET checkout_form_json = NULL`
+- checkout-form: every rule is defined once in `cod-shared/checkout-form/` and
+  enforced by cod-server on `POST /store/orders`, not by the theme — the same
+  discipline as the OTP and Turnstile gates. The read path is lenient and never
+  throws (a configuration written by a newer deploy must not stop a store
+  selling); the write path is strict and refuses unknown keys, so a dashboard
+  typo cannot vanish silently. Hidden fields that still arrive from an
+  edge-cached page are stripped; a delivery option the merchant turned off is
+  **refused** rather than rewritten, because rewriting it would charge a
+  delivery fee the shopper was never shown
+- checkout-form: the address cannot be hidden, only made required or optional —
+  every carrier adapter sends it for a home delivery, so hiding it would be a
+  setting whose only outcome is parcels the carrier rejects. Required applies to
+  home delivery only, and the storefront drops the requirement while the field
+  is hidden for a stop-desk order (a required field inside a hidden container
+  makes the browser refuse to submit, with no message the shopper can read)
+- checkout-form: custom questions are informational — answers are stored on the
+  order (`orders.custom_fields_json`) with the label they had at the time, so
+  renaming or deleting a question never rewrites an old order, and they are
+  never sent to carriers or read by pricing. Ids are minted server-side because
+  answers are keyed by them; an id the store does not already have is refused.
+  Answers travel as one JSON field, since the theme's order action validates
+  form input against a fixed whitelist and a flat field per question would mean
+  a theme deploy every time a merchant adds one
+- checkout-form: `orders.customer_email` — the shopper's email as captured at
+  order time, shown on the order in the dashboard. The column
+  `DIGITAL_PRODUCTS_PLAN.md` reserved, added once here rather than twice
+- tracking: the Meta CAPI event now carries the shopper's email as the hashed
+  `em` identifier when an order has one. Email is the strongest signal Meta
+  matches on after the phone, so this is most of the value in storing it;
+  hashed with the shared SHA-256 helper (which lowercases and strips
+  whitespace, exactly Meta's rule for `em`) and never sent in the clear. An
+  order without one sends the event unchanged
+- storefront: required dropdowns are finally enforced in the browser. Select's
+  value lives in a `type="hidden"` input, which the HTML spec bars from
+  constraint validation, so `required` on one was inert — an unanswered wilaya
+  submitted silently and the shopper found out from the server. Now blocked
+  client-side with the message shown, `aria-invalid` set and focus moved to the
+  trigger; bound in the capture phase so a blocked submit cannot leave the
+  confirm button disabled, and never blocking over a dropdown that is not
+  rendered. Fixes wilaya and commune too, not just a merchant's new question
+- orders: the dashboard's New order form can capture a customer email, stored
+  in the same canonical form the storefront writes so one customer is one
+  string in the column however the order was taken. Optional on that path
+  whatever the storefront asks for — staff on a call either have the address or
+  they do not
+
 - legal-pages: store-owned content pages — Terms, Privacy, Refund/Return and
   Shipping, pre-seeded per store with Algeria-COD-grounded templates (migration
   0030 + `store_pages` / `store_page_translations` / `store_legal_profile`)

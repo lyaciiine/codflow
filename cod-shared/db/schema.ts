@@ -527,6 +527,30 @@ export const orders = sqliteTable("orders", {
 
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+
+  // ── Checkout form capture (appended by migration 0031) ────────────────────
+  //
+  // These sit after createdAt/updatedAt deliberately. cod-server's mock db maps
+  // a full-table select positionally by SCHEMA order (src/test-utils/mock-db.ts),
+  // so a column inserted mid-table silently shifts every fixture after it.
+  // Appending keeps every existing fixture valid and makes the rule simple for
+  // the next column too: new columns go last.
+  /**
+   * The shopper's email as captured at order time, when the merchant enabled
+   * the field on the Checkout Form page. A snapshot like customerName/phone —
+   * the order keeps what was true when it was placed. Never sent to carriers.
+   */
+  customerEmail: text("customer_email"),
+  /**
+   * Answers to the merchant's custom checkout fields:
+   * JSON `[{ id, label, type, value }]`, in policy order.
+   *
+   * The label is stored with the answer because the merchant may rename or
+   * delete the field later, and an order must keep reading the way it read when
+   * it was placed. The dashboard renders this snapshot and never re-resolves it
+   * against the live policy. Carriers and pricing never read it.
+   */
+  customFieldsJson: text("custom_fields_json"),
 });
 
 export const orderAssignments = sqliteTable("order_assignments", {
@@ -889,6 +913,43 @@ export const stores = sqliteTable("stores", {
   storeApiKey: text("store_api_key"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+
+  // ── Checkout form policy (appended by migration 0031) ─────────────────────
+  //
+  // Placed last for the same reason as the orders columns above: the mock db
+  // maps full-table selects positionally by schema order.
+  /**
+   * The Checkout Form Policy — which controllable fields the storefront order
+   * form renders, how strictly each is enforced, and the merchant's own custom
+   * fields. Shape: CheckoutFormPolicy (cod-shared/checkout-form).
+   *
+   * NULL means "the defaults", and the defaults are today's form exactly, so a
+   * store that never opens the Checkout Form page is untouched by this feature.
+   * Rollback for the whole feature is `UPDATE stores SET checkout_form_json = NULL`.
+   *
+   * Never exposed raw to the storefront: getStoreConfig replaces it with the
+   * parsed `checkoutForm` projection.
+   */
+  checkoutFormJson: text("checkout_form_json"),
+
+  // ── WhatsApp widget (appended by migration 0032) ──────────────────────────
+  /**
+   * The WhatsApp Widget configuration — the merchant's number, the identity
+   * shown in the chat panel, the message texts, the appearance, and which
+   * storefront surfaces the launcher appears on. Shape: WhatsAppWidgetConfig
+   * (cod-shared/whatsapp-widget).
+   *
+   * NULL means "no widget", so a store that never opens the WhatsApp page
+   * ships no widget markup at all. Rollback for the whole feature is
+   * `UPDATE stores SET whatsapp_widget_json = NULL`.
+   *
+   * Never exposed raw to the storefront: getStoreConfig replaces it with the
+   * resolved `whatsapp` projection, which is null whenever the widget cannot
+   * render.
+   *
+   * Last for the same positional reason as the columns above.
+   */
+  whatsappWidgetJson: text("whatsapp_widget_json"),
 });
 
 /**

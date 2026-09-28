@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Star, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Filter as FilterIcon, MoreHorizontal, Star, Trash2, X, XCircle } from "lucide-react";
 import { canScope, RequireAuth, useIdentity } from "@/features/auth/components/RequireAuth";
 import { DashboardChrome } from "@/components/layout/chrome";
 import { useLocale, useT } from "@/i18n/react";
@@ -8,7 +8,23 @@ import { SCOPES } from "../../../../../cod-shared/rbac/scopes";
 import { deleteReview, listReviews, updateReviewStatus } from "@/features/reviews/api";
 import { buildReviewsUrl, formatReviewDate, parseReviewStatus, reviewErrorMessage } from "@/features/reviews/model";
 import type { Review, ReviewListResult, ReviewStatus } from "@/features/reviews/types";
-import { Button, EmptyState, Alert, PageHeader, Badge, useConfirmDialog } from "@/components/ui";
+import {
+  Alert,
+  Badge,
+  DropdownItem,
+  DropdownMenu,
+  EmptyState,
+  PageHeader,
+  Pagination,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useConfirmDialog,
+} from "@/components/ui";
 
 const LIMIT = 20;
 const FILTERS: Array<ReviewStatus | "all"> = ["all", "pending", "approved", "rejected"];
@@ -18,35 +34,110 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 function ReviewSkeleton() {
-  return <div role="status" aria-busy="true" className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-40 animate-pulse rounded-xl border border-border bg-card" />)}</div>;
+  return (
+    <div role="status" aria-busy="true" className="space-y-2">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="grid h-14 grid-cols-[1.2fr_1fr_0.8fr_2fr_0.8fr] items-center gap-4 rounded-xl border border-border px-4">
+          <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-40 animate-pulse rounded bg-muted" />
+          <span className="h-6 w-20 justify-self-end animate-pulse rounded-full bg-muted" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
-function ReviewCard({ review, canManage, busyKey, onApprove, onReject, onDelete }: { review: Review; canManage: boolean; busyKey: string | null; onApprove: () => void; onReject: () => void; onDelete: () => void }) {
+function StatusBadge({ status }: { status: ReviewStatus }) {
   const t = useT("reviews");
-  const locale = useLocale();
-  const statusTone = review.status === "approved" ? "success" : review.status === "rejected" ? "critical" : "warning";
-  const statusLabel = t(review.status === "pending" ? "status_pending" : review.status === "approved" ? "status_approved" : "status_rejected");
+  const tone = status === "approved" ? "success" : status === "rejected" ? "critical" : "warning";
+  return <Badge tone={tone}>{t(`status_${status}`)}</Badge>;
+}
+
+function ReviewRowActions({ review, canManage, busyKey, onApprove, onReject, onDelete }: { review: Review; canManage: boolean; busyKey: string | null; onApprove: () => void; onReject: () => void; onDelete: () => void }) {
+  const t = useT("reviews");
+  const common = useT("common");
+  if (!canManage) return null;
   return (
-    <article className={`rounded-xl border border-border bg-card shadow-xs ${review.status === "pending" ? "border-amber-300/60 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-950/10" : ""}`}>
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{review.customerName.trim().charAt(0).toUpperCase()}</span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[15px] font-bold text-foreground">{review.customerName}</span>
-              <Badge tone={statusTone}>{statusLabel}</Badge>
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-3">
-              <StarRating rating={review.rating} />
-              <span className="text-xs font-semibold text-muted-foreground">{t("order_label")}: {review.orderNumber}</span>
-              {review.productName && <span className="max-w-[200px] truncate text-xs font-semibold text-muted-foreground">{review.productName}</span>}
-            </div>
-            {review.title && <p className="mt-2 text-sm font-bold text-foreground">{review.title}</p>}
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{review.body}</p>
-            <p className="mt-2 text-xs font-semibold text-muted-foreground/70">{formatReviewDate(review.createdAt, locale)}</p>
-          </div>
+    <DropdownMenu
+      trigger={<MoreHorizontal size={16} />}
+      triggerLabel={`${common("table.actions")}: ${review.customerName}`}
+    >
+      {review.status !== "approved" && (
+        <DropdownItem disabled={busyKey === `status-${review.id}`} onClick={onApprove}>
+          <CheckCircle size={14} />
+          {t("action_approve")}
+        </DropdownItem>
+      )}
+      {review.status !== "rejected" && (
+        <DropdownItem disabled={busyKey === `status-${review.id}`} onClick={onReject}>
+          <XCircle size={14} />
+          {t("action_reject")}
+        </DropdownItem>
+      )}
+      <DropdownItem disabled={busyKey === `delete-${review.id}`} onClick={onDelete} danger>
+        <Trash2 size={14} />
+        {t("action_delete")}
+      </DropdownItem>
+    </DropdownMenu>
+  );
+}
+
+function ReviewDesktopRow({ review, canManage, busyKey, onApprove, onReject, onDelete }: { review: Review; canManage: boolean; busyKey: string | null; onApprove: () => void; onReject: () => void; onDelete: () => void }) {
+  const locale = useLocale();
+  return (
+    <TableRow className={`border-b border-border last:border-0 transition-colors hover:bg-muted/40 ${review.status === "pending" ? "bg-amber-50/40 dark:bg-amber-950/10" : ""}`}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-bold text-primary">{review.customerName.trim().charAt(0).toUpperCase()}</span>
+          <p className="max-w-36 truncate font-medium text-foreground">{review.customerName}</p>
         </div>
-        {canManage && <div className="flex shrink-0 flex-row gap-2 sm:flex-col sm:items-end">{review.status !== "approved" && <Button type="button" variant="secondary" disabled={busyKey === `status-${review.id}`} onClick={onApprove} className="min-h-8 px-3 text-xs text-violet-600 hover:bg-violet-50 dark:text-violet-400"><CheckCircle size={14} />{t("action_approve")}</Button>}{review.status !== "rejected" && <Button type="button" variant="secondary" disabled={busyKey === `status-${review.id}`} onClick={onReject} className="min-h-8 px-3 text-xs text-orange-600 hover:bg-orange-50 dark:text-orange-400"><XCircle size={14} />{t("action_reject")}</Button>}<Button type="button" variant="secondary" disabled={busyKey === `delete-${review.id}`} onClick={onDelete} className="min-h-8 px-3 text-xs text-destructive hover:bg-destructive/10"><Trash2 size={14} />{t("action_delete")}</Button></div>}
+      </TableCell>
+      <TableCell>
+        <p className="max-w-40 truncate text-sm font-medium text-foreground">{review.productName ?? "—"}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">{review.orderNumber}</p>
+      </TableCell>
+      <TableCell>
+        <StarRating rating={review.rating} />
+      </TableCell>
+      <TableCell>
+        {review.title && <p className="max-w-56 truncate text-sm font-medium text-foreground">{review.title}</p>}
+        <p className={`max-w-56 text-xs leading-5 text-muted-foreground ${review.title ? "line-clamp-1" : "line-clamp-2"}`}>{review.body}</p>
+      </TableCell>
+      <TableCell>
+        <StatusBadge status={review.status} />
+      </TableCell>
+      <TableCell>
+        <span className="whitespace-nowrap text-xs text-muted-foreground">{formatReviewDate(review.createdAt, locale)}</span>
+      </TableCell>
+      <TableCell className="text-end">
+        <ReviewRowActions review={review} canManage={canManage} busyKey={busyKey} onApprove={onApprove} onReject={onReject} onDelete={onDelete} />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function ReviewMobileCard({ review, canManage, busyKey, onApprove, onReject, onDelete }: { review: Review; canManage: boolean; busyKey: string | null; onApprove: () => void; onReject: () => void; onDelete: () => void }) {
+  const locale = useLocale();
+  const t = useT("reviews");
+  return (
+    <article className={`p-4 ${review.status === "pending" ? "bg-amber-50/40 dark:bg-amber-950/10" : ""}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-foreground">{review.customerName}</p>
+            <StatusBadge status={review.status} />
+          </div>
+          <div className="mt-1"><StarRating rating={review.rating} /></div>
+        </div>
+        <ReviewRowActions review={review} canManage={canManage} busyKey={busyKey} onApprove={onApprove} onReject={onReject} onDelete={onDelete} />
+      </div>
+      {review.title && <p className="mt-2 truncate text-sm font-medium text-foreground">{review.title}</p>}
+      <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{review.body}</p>
+      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">{review.productName ?? review.orderNumber}</span>
+        <span className="shrink-0">{formatReviewDate(review.createdAt, locale)}</span>
       </div>
     </article>
   );
@@ -114,20 +205,51 @@ function ReviewsList() {
     } finally { setBusyKey(null); }
   }
 
-  return <div className="space-y-4">
+  return <div className="space-y-3">
     {actionError && <Alert role="alert" tone="critical"><AlertCircle size={18} className="shrink-0" /><span className="flex-1">{actionError}</span><button type="button" onClick={() => setActionError(null)} aria-label={common("cancel")}><X size={16} /></button></Alert>}
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-2 rounded-xl border border-primary/10 bg-primary/5 px-3 py-1.5"><Star size={14} className="fill-primary text-primary" /><p className="text-[11px] font-bold uppercase tracking-widest text-primary">{t("total").replace("{n}", String(result.total))}</p>{result.pendingCount > 0 && <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{t("new_badge").replace("{n}", String(result.pendingCount))}</span>}</div>
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-muted/50 p-1"><div className="flex gap-1">{FILTERS.map((filter) => <button key={filter} type="button" onClick={() => switchStatus(filter)} className={`shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all ${status === filter ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}>{t(`filter_${filter}`)}{filter === "pending" && result.pendingCount > 0 && <span className="ms-1 text-amber-500">({result.pendingCount})</span>}</button>)}</div></div>
+    <div className="rounded-xl border border-border bg-card shadow-xs">
+      <div className="flex flex-col gap-3 border-b border-border p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 rounded-xl border border-primary/10 bg-primary/5 px-3 py-1.5"><Star size={14} className="fill-primary text-primary" /><p className="text-[11px] font-bold uppercase tracking-widest text-primary">{t("total").replace("{n}", String(result.total))}</p>{result.pendingCount > 0 && <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{t("new_badge").replace("{n}", String(result.pendingCount))}</span>}</div>
+        <label className="relative flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-input bg-background px-3 sm:flex-none">
+          <FilterIcon size={14} aria-hidden="true" className="shrink-0 text-muted-foreground" />
+          <Select aria-label={t("table.status")} value={status} onChange={(event) => switchStatus(event.currentTarget.value as ReviewStatus | "all")} variant="bare" size="sm" wrapperClassName="min-w-0 flex-1" triggerClassName="min-w-0 flex-1">
+            {FILTERS.map((filter) => <option key={filter} value={filter}>{t(`filter_${filter}`)}{filter === "pending" && result.pendingCount > 0 ? ` (${result.pendingCount})` : ""}</option>)}
+          </Select>
+        </label>
+      </div>
+      {result.rows.length === 0 ? <EmptyState icon={<Star size={22} />} title={t("empty_title")} description={t("empty_desc")} /> : <>
+        <div className="divide-y divide-border md:hidden">
+          {result.rows.map((review) => <ReviewMobileCard key={review.id} review={review} canManage={canManage} busyKey={busyKey} onApprove={() => void runStatus(review, "approved")} onReject={() => void runStatus(review, "rejected")} onDelete={() => void runDelete(review)} />)}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
+          <Table className="min-w-[960px]">
+            <TableHeader>
+              <TableRow className="text-xs font-semibold text-muted-foreground">
+                <TableHead className="text-start">{t("table.customer")}</TableHead>
+                <TableHead className="text-start">{t("table.product")}</TableHead>
+                <TableHead className="text-start">{t("table.rating")}</TableHead>
+                <TableHead className="text-start">{t("table.review")}</TableHead>
+                <TableHead className="text-start">{t("table.status")}</TableHead>
+                <TableHead className="text-start">{t("table.date")}</TableHead>
+                <TableHead className="w-12"><span className="sr-only">{common("table.actions")}</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.rows.map((review) => (
+                <ReviewDesktopRow key={review.id} review={review} canManage={canManage} busyKey={busyKey} onApprove={() => void runStatus(review, "approved")} onReject={() => void runStatus(review, "rejected")} onDelete={() => void runDelete(review)} />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <Pagination page={safePage} totalPages={totalPages} total={result.total} pageSize={LIMIT} onPageChange={switchPage} />
+      </>}
     </div>
-    {result.rows.length === 0 ? <EmptyState icon={<Star size={22} />} title={t("empty_title")} description={t("empty_desc")} /> : <div className="space-y-3">{result.rows.map((review) => <ReviewCard key={review.id} review={review} canManage={canManage} busyKey={busyKey} onApprove={() => void runStatus(review, "approved")} onReject={() => void runStatus(review, "rejected")} onDelete={() => void runDelete(review)} />)}</div>}
-    {totalPages > 1 && <div className="flex items-center justify-between pt-1"><Button type="button" variant="secondary" disabled={safePage <= 1} onClick={() => switchPage(safePage - 1)} className="min-h-9 px-3 text-xs"><ChevronDown size={14} className="rotate-90" />{t("page_prev")}</Button><span className="text-xs font-bold text-muted-foreground">{t("page_of").replace("{current}", String(safePage)).replace("{total}", String(totalPages))}</span><Button type="button" variant="secondary" disabled={safePage >= totalPages} onClick={() => switchPage(safePage + 1)} className="min-h-9 px-3 text-xs">{t("page_next")}<ChevronUp size={14} className="rotate-90" /></Button></div>}
   </div>;
 }
 
 function Gated() {
   const t = useT("reviews");
-  return <DashboardChrome currentPath="/reviews"><PageHeader title={t("page_title")} /><ReviewsList /></DashboardChrome>;
+  return <DashboardChrome currentPath="/reviews" wide><PageHeader title={t("page_title")} /><ReviewsList /></DashboardChrome>;
 }
 
 export default function ReviewsPageApp() { return <RequireAuth><Gated /></RequireAuth>; }

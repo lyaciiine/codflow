@@ -5,7 +5,7 @@ import { OrderDetail } from "@/features/orders/components/OrderDetail";
 export default function OrderDetailPageApp({ orderId }: { orderId: string }) {
   return (
     <RequireAuth>
-      <DashboardChrome currentPath={`/orders/${orderId}`}>
+      <DashboardChrome currentPath={`/orders/${orderId}`} wide>
         <OrderDetail orderId={orderId} />
       </DashboardChrome>
     </RequireAuth>

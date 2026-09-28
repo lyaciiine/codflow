@@ -20,7 +20,7 @@ import { getOtpConfigRaw } from "../../../../cod-shared/queries/otp-config";
 import { BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { verifyOtpToken } from "@/endpoints/store-otp/token";
-import { normalizeAlgerianPhone } from "@/endpoints/store-otp/phone";
+import { normalizeAlgerianPhone } from "../../../../cod-shared/lib/phone";
 
 export async function assertOtpVerification(
   c: Context<AppContext>,

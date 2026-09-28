@@ -4,7 +4,7 @@ import { CustomerGroupDetail } from "@/features/customer-groups/components/Custo
 
 function Gated({ groupId }: { groupId: string }) {
   return (
-    <DashboardChrome currentPath={`/customer-groups/${groupId}`}>
+    <DashboardChrome currentPath={`/customer-groups/${groupId}`} wide>
       <CustomerGroupDetail groupId={groupId} />
     </DashboardChrome>
   );

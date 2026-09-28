@@ -9,6 +9,7 @@ import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { DEFAULT_CHECKOUT_FORM_POLICY } from "../../../../cod-shared/checkout-form/policy";
 import storeRouter from "./routes";
 import * as queries from "./queries";
 
@@ -100,6 +101,13 @@ describe("Store API routes (OpenAPIHono)", () => {
     app.route("/store", storeRouter);
     mockDb = {};
     vi.clearAllMocks();
+    // Every order goes through the store's Checkout Form Policy. The defaults
+    // are the storefront's behaviour before that feature existed, so these
+    // route tests keep asserting exactly what they always asserted.
+    vi.mocked(queries.getCheckoutFormPolicy).mockResolvedValue({
+      policy: DEFAULT_CHECKOUT_FORM_POLICY,
+      lang: "ar",
+    } as any);
   });
 
   describe("GET /store/config", () => {

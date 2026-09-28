@@ -101,6 +101,9 @@ export const ar: StoreFrontContent = {
   formStopDesk: "مكتب البريد",
   formNotesLabel: "ملاحظات",
   formNotesPlaceholder: "أي تفاصيل إضافية للتوصيل...",
+  formEmailLabel: "البريد الإلكتروني",
+  formEmailPlaceholder: "you@example.com",
+  formRequiredField: "يرجى اختيار أحد الخيارات",
   formSubmit: "تأكيد الطلب",
   formConfirmNote: "سيتصل بك فريقنا لتأكيد طلبك خلال 24 ساعة",
 
@@ -122,6 +125,19 @@ export const ar: StoreFrontContent = {
   otpErrorGeneric: "تعذر إرسال الرمز — أعد المحاولة",
   turnstileErrorFailed: "فشل التحقق الأمني — أعد إرسال الطلب",
   turnstileVerifying: "جارٍ التحقق الأمني — الرجاء الانتظار…",
+
+  // ── WhatsApp contact widget ────────────────────────────────────────────────
+  waOpenChat: "محادثة عبر واتساب",
+  waCloseChat: "إغلاق المحادثة",
+  waCaptionDefault: "نرد عادة خلال دقائق",
+  waWelcomeDefault: "مرحباً بك! 👋 كيف يمكننا مساعدتك اليوم؟",
+  waCtaDefault: "تواصل معنا عبر واتساب",
+  waPrefillGeneralDefault: "السلام عليكم، لدي استفسار بخصوص متجركم",
+  waPrefillProductDefault: "السلام عليكم، أريد الاستفسار عن {product} — {url}",
+  waThankYouButtonDefault: "تأكيد طلبك",
+  waPrefillThankYouDefault: "السلام عليكم {store}، لقد قمت بطلب {order}. يرجى تأكيده.",
+  waComposePlaceholder: "اكتب رسالتك هنا...",
+  waSend: "إرسال",
 
   // ── Order summary ─────────────────────────────────────────────────────────
   qtyLabel: "الكمية",

@@ -29,6 +29,8 @@ const capiClient = vi.hoisted(() => ({
         eventId: string;
         testEventCode: string | null;
         eventSourceUrl?: string | null;
+        /** Named so tests can assert what identifiers the event carries. */
+        userData: { email?: string | null; [key: string]: unknown };
         [key: string]: unknown;
       },
     ) => ({ success: true, fbtrace_id: "trace-1" }),
@@ -74,6 +76,8 @@ interface Scenario {
   storePixel?: Partial<typeof schema.storePixelConfig.$inferInsert>;
   /** Attribute the order to a landing page with this slug. */
   landingPageSlug?: string;
+  /** Set when the merchant collects an email and the shopper gave one. */
+  customerEmail?: string | null;
 }
 
 /**
@@ -166,6 +170,7 @@ async function seedOrder(scenario: Scenario = {}) {
     customerId,
     customerName: "Karim Benali",
     phone: `05510000${String(n).padStart(2, "0")}`,
+    customerEmail: scenario.customerEmail ?? null,
     price: 5000,
     deliveryFee: 600,
     status: "delivered",
@@ -237,6 +242,37 @@ describe("the CAPI Workflow's destination", () => {
     const payload = capiClient.sendCapiEvent.mock.calls[0]![2];
     expect(payload.eventId).toBe(orderId);
     expect(payload.eventName).toBe("Purchase");
+  });
+
+  /**
+   * Email is the strongest identifier Meta matches on after the phone, and
+   * better matching is most of the reason the column is worth keeping. The
+   * hashing itself is covered in capi.test.ts; what is proven here is the wiring
+   * — that the workflow actually reads the order's email and hands it to the
+   * client — because a column that is stored and never read looks identical to
+   * one that works, right up until someone checks the match quality.
+   */
+  it("passes the order's email to Meta when the shopper gave one", async () => {
+    const { orderId } = await seedOrder({
+      storePixel: {},
+      customerEmail: "shopper@example.com",
+    });
+
+    await runDeliveredPurchase(orderId);
+
+    const payload = capiClient.sendCapiEvent.mock.calls[0]![2];
+    expect(payload.userData.email).toBe("shopper@example.com");
+  });
+
+  it("sends the event without an email for an order that carries none", async () => {
+    // Every order placed before the merchant turned the field on.
+    const { orderId } = await seedOrder({ storePixel: {} });
+
+    await runDeliveredPurchase(orderId);
+
+    const payload = capiClient.sendCapiEvent.mock.calls[0]![2];
+    expect(payload.userData.email).toBeNull();
+    expect(capiClient.sendCapiEvent).toHaveBeenCalledOnce();
   });
 
   it("sends nothing when the store has no tracking configured", async () => {

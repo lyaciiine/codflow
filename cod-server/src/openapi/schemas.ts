@@ -149,6 +149,7 @@ export {
   StoreLandingPageSchema,
   StorePublicTrackingSchema,
   StoreOrderTrackingSchema,
+  StoreWhatsAppWidgetSchema,
   StoreConfigSchema,
   StorePagePublicSchema,
 } from "./schemas/store";

@@ -45,8 +45,17 @@ function storeRow(overrides: Record<string, any> = {}) {
     freeShippingThreshold: null,
     cartShippingMode: "highest",
     status: "active",
+    // storeApiKey sits between status and createdAt in the schema. It was
+    // missing here, which silently shifted every value after it by one slot.
+    storeApiKey: "sk_store_abc123",
     createdAt: NOW,
     updatedAt: NOW,
+    // The checkout form policy sits last for the same positional reason: NULL
+    // is "today's form", which is what every store reads until it opts in.
+    checkoutFormJson: null,
+    // The widget config sits after it, again last in schema order. NULL is
+    // "no widget", which is what every store reads until it configures one.
+    whatsappWidgetJson: null,
     ...overrides,
   };
 }

@@ -114,6 +114,20 @@ export const SCOPES = {
   /** Create, update, and delete promotional offers */
   OFFERS_MANAGE: "offers:manage",
 
+  // Checkout Form (the storefront order form: which fields it asks for, how
+  // strictly each is enforced, and the merchant's own custom fields)
+  /** View the checkout form policy */
+  CHECKOUT_FORM_READ: "checkout_form:read",
+  /** Change which fields the storefront order form asks for, and manage custom fields */
+  CHECKOUT_FORM_MANAGE: "checkout_form:manage",
+
+  // WhatsApp Widget (the storefront contact handoff: the number, what the chat
+  // panel shows, and which pages the launcher appears on)
+  /** View the WhatsApp widget configuration */
+  WHATSAPP_WIDGET_READ: "whatsapp_widget:read",
+  /** Change the WhatsApp number, the widget's content, appearance and placement */
+  WHATSAPP_WIDGET_MANAGE: "whatsapp_widget:manage",
+
   // Store Pages (legal pages: Terms, Privacy, Refund, Shipping, and custom pages)
   /** View store pages list, content, and the legal profile */
   STORE_PAGES_READ: "store_pages:read",
@@ -232,6 +246,14 @@ export const SCOPE_CATEGORIES = {
   storePages: {
     label: "Store Pages",
     scopes: [SCOPES.STORE_PAGES_READ, SCOPES.STORE_PAGES_MANAGE],
+  },
+  checkoutForm: {
+    label: "Checkout Form",
+    scopes: [SCOPES.CHECKOUT_FORM_READ, SCOPES.CHECKOUT_FORM_MANAGE],
+  },
+  whatsappWidget: {
+    label: "WhatsApp Widget",
+    scopes: [SCOPES.WHATSAPP_WIDGET_READ, SCOPES.WHATSAPP_WIDGET_MANAGE],
   },
   abandonedOrders: {
     label: "Abandoned Orders",

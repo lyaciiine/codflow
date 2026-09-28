@@ -20,12 +20,16 @@ export function initStickyCta(): (() => void) | void {
       // Hide if the form is in the viewport OR has been scrolled past
       const isAtOrPastForm = entry.isIntersecting || entry.boundingClientRect.top < 0;
       cta.classList.toggle("is-hidden", isAtOrPastForm);
+      document.body.dataset.stickyCta = isAtOrPastForm ? "hidden" : "visible";
     },
     { threshold: 0 }
   );
   observer.observe(form);
 
-  return () => observer.disconnect();
+  return () => {
+    observer.disconnect();
+    delete document.body.dataset.stickyCta;
+  };
 }
 
 if (typeof document !== "undefined") {

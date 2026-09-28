@@ -393,4 +393,50 @@ describe("toggleAddressFields", () => {
     document.getElementById("address-field-container")!.remove();
     expect(() => toggleAddressFields()).not.toThrow();
   });
+
+  /**
+   * A merchant who makes the address required creates a trap for every
+   * stop-desk order: the container is hidden, but a `required` field inside it
+   * makes the browser refuse to submit the form — it tries to focus a control it
+   * cannot show, and the shopper taps Confirm and nothing happens, with no
+   * message anywhere. The requirement therefore follows the visibility.
+   *
+   * It is keyed off the marker the form renders rather than the live attribute,
+   * so restoring it cannot invent a requirement the merchant never set.
+   */
+  describe("a required address never blocks a stop-desk order", () => {
+    function requireAddress(): HTMLInputElement {
+      const input = document.getElementById("f-address") as HTMLInputElement;
+      input.dataset.addressRequired = "true";
+      input.required = true;
+      return input;
+    }
+
+    it("drops the requirement while the address is hidden", () => {
+      const input = requireAddress();
+      pick("stop_desk");
+      toggleAddressFields();
+      expect(document.getElementById("address-field-container")!.classList.contains("hidden")).toBe(
+        true,
+      );
+      expect(input.required).toBe(false);
+    });
+
+    it("restores it when home delivery comes back", () => {
+      const input = requireAddress();
+      pick("stop_desk");
+      toggleAddressFields();
+      pick("home");
+      toggleAddressFields();
+      expect(input.required).toBe(true);
+    });
+
+    it("never makes an optional address required", () => {
+      const input = document.getElementById("f-address") as HTMLInputElement;
+      expect(input.dataset.addressRequired).toBeUndefined();
+      pick("home");
+      toggleAddressFields();
+      expect(input.required).toBe(false);
+    });
+  });
 });

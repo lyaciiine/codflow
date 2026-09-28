@@ -12,6 +12,14 @@
   "status_approved": "Approuvé",
   "status_rejected": "Rejeté",
   "order_label": "Commande",
+  "table": {
+    "customer": "Client",
+    "product": "Produit",
+    "rating": "Note",
+    "review": "Avis",
+    "status": "Statut",
+    "date": "Date"
+  },
   "action_approve": "Approuver",
   "action_reject": "Rejeter",
   "action_delete": "Supprimer",
@@ -25,8 +33,5 @@
   "toast_error_delete": "Échec de la suppression de l'avis",
   "error_load": "Impossible de charger les avis",
   "error_not_found": "Avis introuvable",
-  "error_generic": "Une erreur est survenue. Veuillez réessayer.",
-  "page_prev": "Précédent",
-  "page_next": "Suivant",
-  "page_of": "Page {current} sur {total}"
+  "error_generic": "Une erreur est survenue. Veuillez réessayer."
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { toLocalAlgerianMobile } from "@/endpoints/store-otp/phone";
+import { toLocalAlgerianMobile } from "../../../../cod-shared/lib/phone";
 
 export const variantSelectionSchema = z.object({
   variantId: z.string().min(1),
@@ -63,6 +63,32 @@ export const storeOrderSchema = z.object({
   // pricing — the server resolves the unit price from the catalog row.
   pricePerUnit: z.number().positive().optional(),
   notes: z.string().max(500).optional(),
+  // Transport only. Whether the field is asked for at all, and whether it may
+  // be empty, is the merchant's Checkout Form Policy — applied in the handler
+  // by applyCheckoutPolicy, because this schema is validated by the route
+  // BEFORE the handler runs and a policy-built schema would never see a key
+  // this one had already stripped.
+  email: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.string().max(254).optional()
+  ),
+  // Answers to the merchant's custom fields, as ONE JSON field — the same
+  // shape as variantSelections/items above, and for the same reason: the
+  // storefront's core action validates form input against a fixed whitelist
+  // and strips everything else, so N flat inputs would each need whitelisting
+  // while one field survives any policy. Validated per field definition in the
+  // handler; unknown ids never reach the order.
+  customFieldResponses: z.preprocess(
+    (v) => {
+      if (!v) return undefined;
+      if (Array.isArray(v)) return v.length === 0 ? undefined : v;
+      if (typeof v !== "string" || v === "[]") return undefined;
+      // Kept as the raw string: applyCheckoutPolicy owns parsing, so the size
+      // cap and the malformed-payload behaviour live in exactly one place.
+      return v.length > 4000 ? undefined : v;
+    },
+    z.union([z.string(), z.array(z.unknown())]).optional()
+  ),
   // Explicit offer selection from client — server applies this exact offer rather than auto-detecting
   offerId: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),

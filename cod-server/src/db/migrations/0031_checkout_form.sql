@@ -1,0 +1,37 @@
+-- Merchant-configurable storefront order form
+-- (report-md/STOREFRONT_FORM_CONTROL_PLAN.md, Slice 0).
+--
+-- Three additive nullable columns. All of them are inert until a merchant opens
+-- the new Checkout Form page, so applying this migration changes no behaviour
+-- for any store that exists today.
+--
+-- stores.checkout_form_json: the Checkout Form Policy — which controllable
+--   fields the storefront renders and how strictly each is enforced, plus the
+--   merchant's own custom fields. NULL means "the defaults", and the defaults
+--   are today's form exactly: address optional, notes shown, no email field,
+--   both delivery options, no custom fields. A store that never touches the
+--   page keeps a NULL here forever.
+--   Rollback for the whole feature is `UPDATE stores SET checkout_form_json =
+--   NULL` — there is nothing to reverse, because an order placed under a policy
+--   is an ordinary CodFlow order.
+--   One JSON column rather than a column per field: the field set is expected
+--   to grow, and each new `stores` column breaks every positional mock-db
+--   fixture in cod-server (see src/test-utils/d1.ts).
+--
+-- orders.customer_email: the shopper's email as captured at order time, when
+--   the merchant enables the field. A snapshot, like customer_name and phone:
+--   the order keeps what was true when it was placed. Carriers never receive
+--   it. DIGITAL_PRODUCTS_PLAN.md will read this same column as the delivery
+--   address for download links, which is why it lands here once rather than
+--   twice.
+--
+-- orders.custom_fields_json: the answers to the merchant's custom fields, as a
+--   snapshot array of {id, label, type, value}. Stored with the label because
+--   the merchant may rename or delete a field later and history must not be
+--   rewritten by that edit — the dashboard renders the snapshot, never the live
+--   policy. Carriers and pricing never read it.
+ALTER TABLE `stores` ADD COLUMN `checkout_form_json` text;
+--> statement-breakpoint
+ALTER TABLE `orders` ADD COLUMN `customer_email` text;
+--> statement-breakpoint
+ALTER TABLE `orders` ADD COLUMN `custom_fields_json` text;

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { storeOrderSchema } from "./validation";
-import { toLocalAlgerianMobile } from "@/endpoints/store-otp/phone";
 
 function orderWith(phone: string) {
   return {
@@ -14,32 +13,6 @@ function orderWith(phone: string) {
     pricePerUnit: 2500,
   };
 }
-
-describe("toLocalAlgerianMobile", () => {
-  it.each([
-    ["0551234567", "0551234567"],
-    ["055 12 34 567", "0551234567"],
-    ["+213551234567", "0551234567"],
-    ["213551234567", "0551234567"],
-    ["00213551234567", "0551234567"],
-    ["0661234567", "0661234567"],
-    ["0771234567", "0771234567"],
-  ])("normalizes %s → %s", (input, expected) => {
-    expect(toLocalAlgerianMobile(input)).toBe(expected);
-  });
-
-  it.each([
-    "12345",           // garbage
-    "05512345",        // too short
-    "05512345678",     // too long
-    "041123456",       // landline (04 prefix)
-    "0812345678",      // invalid prefix
-    "+33123456789",    // foreign number
-    "0000000000",      // zeros
-  ])("rejects %s", (input) => {
-    expect(toLocalAlgerianMobile(input)).toBeNull();
-  });
-});
 
 describe("storeOrderSchema phone", () => {
   it("accepts a local mobile and normalizes E.164/international forms to local", () => {

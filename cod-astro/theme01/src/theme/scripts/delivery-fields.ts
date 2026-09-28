@@ -130,7 +130,20 @@ const UNSELECTED_CLASSES = [
 export function toggleAddressFields(): void {
   const container = document.getElementById("address-field-container");
   if (!container) return;
-  container.classList.toggle("hidden", currentDeliveryType() !== "home");
+  const hidden = currentDeliveryType() !== "home";
+  container.classList.toggle("hidden", hidden);
+
+  // A `required` field inside a hidden container makes the form unsubmittable:
+  // the browser refuses to submit, tries to focus what it cannot show, and the
+  // shopper gets a form that does nothing when tapped with no message to read.
+  //
+  // That is reachable as soon as a merchant makes the address required, because
+  // every stop-desk order then hides a required field. The requirement is
+  // restored the moment home delivery is chosen again — and cod-server applies
+  // the same rule regardless (required for home delivery only), so this stays
+  // UX rather than a second definition of it.
+  const input = document.getElementById("f-address") as HTMLInputElement | null;
+  if (input?.dataset.addressRequired === "true") input.required = !hidden;
 }
 
 function paintDeliveryRadios(): void {

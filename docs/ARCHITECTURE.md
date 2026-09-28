@@ -232,5 +232,8 @@ Shared resources: D1, R2, KV (same Cloudflare account).
 
 ## Related Docs
 
+- [../puck/README.md](../puck/README.md) — **Start here** for the storefront/theme platform initiative (workspace guide: order of reading, decisions, prohibitions)
+- [../puck/PLATFORM-ARCHITECTURE-PLAN.md](../puck/PLATFORM-ARCHITECTURE-PLAN.md) — **Canonical plan** for the storefront/theme platform foundation (contract, sections, composition, phases, proofs)
+- [../puck/adr/0002-storefront-theme-platform-foundation.md](../puck/adr/0002-storefront-theme-platform-foundation.md) — Decision record behind the platform plan
 - [CONFIGURATION.md](./CONFIGURATION.md) — Environment variables
 - [DEPLOYMENT.md](./DEPLOYMENT.md) — Production deployment

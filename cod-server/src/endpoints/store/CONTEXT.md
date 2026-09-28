@@ -58,6 +58,24 @@ _Avoid_: Catalog requirement, setup warning
 A server-side Meta "Lead" event fired alongside each order — only when the merchant chose Lead as the Conversion Event — using the same event ID as the browser pixel, so Meta deduplicates instead of double-counting. Failure is logged and ignored — it can never block an order.
 _Avoid_: Tracking pixel, analytics event
 
+### Form Policy
+
+**Checkout Form Policy**:
+The merchant's per-store configuration of which order-form fields the storefront shows and how strictly each is enforced. No policy means today's form exactly.
+_Avoid_: Form settings, field toggles
+
+**Fixed Field**:
+A field the merchant can never hide — name, phone, wilaya, commune — because COD dispatch, customer identity and delivery pricing depend on it.
+_Avoid_: Locked field, mandatory field
+
+**Custom Field**:
+A merchant-authored question on the order form. Informational only: it never reaches carriers, pricing or basket normalisation.
+_Avoid_: Extra field, metadata field
+
+**Custom Field Answer**:
+The shopper's reply stored on the order as a snapshot of id, label, type and value, so later edits to the policy never rewrite history.
+_Avoid_: Custom field value
+
 ### Reviews
 
 **Order Number Review**:

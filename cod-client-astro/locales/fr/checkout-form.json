@@ -1,0 +1,80 @@
+{
+  "page_title": "Formulaire de commande",
+  "page_subtitle": "Choisissez les informations que votre boutique demande, et ajoutez vos propres questions.",
+  "cache_notice": "Les changements peuvent prendre quelques minutes à apparaître sur les pages produit déjà chargées par les visiteurs.",
+  "save": "Enregistrer",
+  "saved_toast": "Formulaire de commande mis à jour",
+  "reset": "Annuler les modifications",
+  "state": {
+    "required": "Obligatoire",
+    "optional": "Facultatif",
+    "hidden": "Masqué"
+  },
+  "fields": {
+    "section_title": "Coordonnées du client",
+    "section_subtitle": "Ce que le formulaire demande à chaque acheteur.",
+    "locked_note": "Toujours obligatoire",
+    "customerName": "Nom complet",
+    "customerName_why": "Les transporteurs ont besoin d'un nom sur le colis.",
+    "phone": "Numéro de téléphone",
+    "phone_why": "C'est ainsi que vous confirmez la commande, et que le client est reconnu à la suivante.",
+    "wilaya": "Wilaya",
+    "wilaya_why": "Détermine le prix de livraison.",
+    "commune": "Commune",
+    "commune_why": "Détermine le prix de livraison et la destination du transporteur.",
+    "address": "Adresse",
+    "address_hint": "Demandée pour la livraison à domicile uniquement. Ne peut pas être désactivée — les transporteurs en ont besoin.",
+    "notes": "Notes de commande",
+    "notes_hint": "La masquer raccourcit le formulaire, et le client ne peut plus laisser d'instructions de livraison.",
+    "email": "E-mail",
+    "email_hint": "Enregistré sur la commande. Devient obligatoire automatiquement si vous vendez des produits numériques."
+  },
+  "delivery": {
+    "section_title": "Modes de livraison",
+    "section_subtitle": "Les choix que voit l'acheteur. Au moins un doit rester actif.",
+    "home": "Livraison à domicile",
+    "stop_desk": "Retrait au bureau du transporteur",
+    "last_one_hint": "Gardez au moins un mode de livraison actif — un formulaire sans aucun ne reçoit aucune commande."
+  },
+  "custom": {
+    "section_title": "Vos propres questions",
+    "section_subtitle": "Jusqu'à {max} questions supplémentaires, posées après les informations de livraison.",
+    "add": "Ajouter une question",
+    "empty": "Aucune question supplémentaire pour l'instant.",
+    "label": "Question",
+    "label_placeholder": "ex. Heure de livraison souhaitée",
+    "type": "Type de réponse",
+    "type_text": "Texte court",
+    "type_textarea": "Texte long",
+    "type_number": "Nombre",
+    "type_select": "Choix dans une liste",
+    "required": "Réponse obligatoire",
+    "options": "Choix",
+    "option_placeholder": "Choix",
+    "add_option": "Ajouter un choix",
+    "remove_option": "Supprimer le choix",
+    "remove": "Supprimer la question",
+    "move_up": "Monter",
+    "move_down": "Descendre",
+    "answers_note": "Les réponses apparaissent sur la commande dans votre tableau de bord. Elles ne sont jamais envoyées aux transporteurs.",
+    "limit_reached": "Vous avez atteint le maximum de {max} questions.",
+    "empty_hint": "Ajoutez une question lorsque les champs standards ne suffisent pas.",
+    "question_n": "Question {n}"
+  },
+  "errors": {
+    "load_failed": "Impossible de charger les réglages du formulaire.",
+    "save_failed": "Impossible d'enregistrer le formulaire.",
+    "no_delivery_option": "Gardez au moins un mode de livraison actif — sinon personne ne peut commander.",
+    "label_required": "Donnez un titre à chaque question.",
+    "label_too_long": "Le titre de la question est trop long.",
+    "duplicate_label": "Deux questions ne peuvent pas avoir le même titre.",
+    "options_required": "Une question à liste a besoin d'au moins un choix.",
+    "duplicate_options": "Les choix doivent être différents les uns des autres.",
+    "too_many_options": "Trop de choix pour une seule question.",
+    "too_many_fields": "Trop de questions."
+  },
+  "status": {
+    "saved": "Toutes les modifications sont enregistrées",
+    "unsaved": "Modifications non enregistrées"
+  }
+}

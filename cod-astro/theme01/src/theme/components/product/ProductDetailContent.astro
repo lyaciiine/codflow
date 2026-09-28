@@ -147,6 +147,7 @@ const jsonLd = getProductJsonLd(product, basePrice);
         turnstileEnabled={config.turnstileEnabled === true}
         turnstileSiteKey={config.turnstileSiteKey ?? null}
         pages={config.pages ?? []}
+        formPolicy={config.checkoutForm}
       >
         {/* Sits inside the order card, directly under the confirm button.
             Secondary by design: the direct order form stays the primary

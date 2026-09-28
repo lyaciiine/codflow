@@ -43,6 +43,7 @@ vi.mock("../../../../cod-shared/queries/otp-config");
 vi.mock("../../../../cod-shared/queries/turnstile-config");
 vi.mock("../../../../cod-shared/lib/turnstile");
 vi.mock("@/lib/capi", () => ({ sendCapiEvent: vi.fn(async () => undefined) }));
+import { DEFAULT_CHECKOUT_FORM_POLICY } from "../../../../cod-shared/checkout-form/policy";
 
 const SITE_KEY = "0x4AAA-site";
 const SECRET_KEY = "0x4AAA-secret";
@@ -83,6 +84,13 @@ function stubSuccessfulOrderFlow() {
   vi.mocked(storeQueries.findStockShortfall).mockReturnValue(null as any);
   vi.mocked(storeQueries.findOrCreateCustomer).mockResolvedValue({ id: "cust-1", name: "Karim Benali" } as any);
   vi.mocked(storeQueries.resolveDeliveryFee).mockResolvedValue(600 as any);
+  // The order path loads the store's Checkout Form Policy. Mocked to the
+  // defaults here — these suites are about the gate they are named for, and the
+  // defaults are the storefront's behaviour before that feature existed.
+  vi.mocked(storeQueries.getCheckoutFormPolicy).mockResolvedValue({
+    policy: DEFAULT_CHECKOUT_FORM_POLICY,
+    lang: "ar",
+  } as any);
   vi.mocked(storeQueries.createStoreOrder).mockResolvedValue({
     id: "ord-1",
     orderNumber: "ORD-20260901-0001",

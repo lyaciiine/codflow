@@ -37,6 +37,7 @@ import {
 const driversAlias = aliasedTable(drivers, "d");
 
 import { safeLikeTerm } from "./search";
+import { getCustomerByPhone, updateCustomer, type UpdateCustomerData } from "./customers";
 
 export interface OrderFilters {
   status?: (typeof orders.$inferSelect)["status"] | "all";
@@ -486,6 +487,101 @@ export async function updateOrderStatus(
   await db.batch(statements as [BatchStatement, ...BatchStatement[]]);
 
   return true;
+}
+
+export interface UpdateOrderData {
+  customerName?: string;
+  phone?: string;
+  /** null clears the email; undefined leaves it untouched. */
+  customerEmail?: string | null;
+  wilayaId?: number;
+  communeId?: string;
+  city?: string | null;
+  /** null clears the address; undefined leaves it untouched. */
+  address?: string | null;
+  deliveryType?: "home" | "stop_desk";
+  notes?: string | null;
+}
+
+/**
+ * Partial edit of an order's customer/destination fields. Identity (id,
+ * orderNumber), pricing, and dispatch state are deliberately not patchable —
+ * pricing is fixed at creation and post-dispatch edits go through the
+ * carrier-aware shipment-operations path.
+ *
+ * The linked customer record is kept in sync in the same operation: name,
+ * phone, wilaya/commune, and address edits flow into `customers`, so an order
+ * and its customer never disagree on who they belong to (phone is the
+ * customer identity). Only fields this edit actually changes are written.
+ * When the corrected phone already belongs to a different customer record,
+ * the order is re-pointed to that record instead of hijacking its phone.
+ * customerEmail is order-only — customers have no email column.
+ */
+export async function updateOrder(
+  db: AppDb,
+  orderId: string,
+  updates: UpdateOrderData,
+) {
+  const current = await db
+    .select({
+      customerId: orders.customerId,
+      customerName: orders.customerName,
+      phone: orders.phone,
+      wilayaId: orders.wilayaId,
+      communeId: orders.communeId,
+      address: orders.address,
+    })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .get();
+
+  const patch: Record<string, unknown> = {
+    updatedAt: new Date().toISOString(),
+  };
+  if (updates.customerName !== undefined) patch.customerName = updates.customerName;
+  if (updates.phone !== undefined) patch.phone = updates.phone;
+  if (updates.customerEmail !== undefined) patch.customerEmail = updates.customerEmail;
+  if (updates.wilayaId !== undefined) patch.wilayaId = updates.wilayaId;
+  if (updates.communeId !== undefined) patch.communeId = updates.communeId;
+  if (updates.city !== undefined) patch.city = updates.city;
+  if (updates.address !== undefined) patch.address = updates.address;
+  if (updates.deliveryType !== undefined) patch.deliveryType = updates.deliveryType;
+  if (updates.notes !== undefined) patch.notes = updates.notes;
+
+  const customerUpdates: UpdateCustomerData = {};
+  if (current) {
+    if (updates.customerName !== undefined && updates.customerName !== current.customerName) {
+      customerUpdates.name = updates.customerName;
+    }
+    if (updates.wilayaId !== undefined && updates.wilayaId !== current.wilayaId) {
+      customerUpdates.wilayaId = updates.wilayaId;
+    }
+    if (updates.communeId !== undefined && updates.communeId !== current.communeId) {
+      customerUpdates.communeId = updates.communeId;
+    }
+    if (updates.address !== undefined && (updates.address ?? null) !== (current.address ?? null)) {
+      customerUpdates.address = updates.address ?? null;
+    }
+
+    if (updates.phone !== undefined && updates.phone !== current.phone) {
+      const phoneOwner = await getCustomerByPhone(db, updates.phone);
+      if (phoneOwner && phoneOwner.id !== current.customerId) {
+        // The corrected number already identifies another customer record —
+        // move the order to it. Only fields this edit changed flow onto it,
+        // never the previous customer's identity.
+        patch.customerId = phoneOwner.id;
+      } else {
+        customerUpdates.phone = updates.phone;
+      }
+    }
+  }
+
+  await db.update(orders).set(patch).where(eq(orders.id, orderId));
+
+  const customerTarget = (patch.customerId as string | undefined) ?? current?.customerId;
+  if (customerTarget && Object.keys(customerUpdates).length > 0) {
+    await updateCustomer(db, customerTarget, customerUpdates);
+  }
 }
 
 export async function setOrderProductReturn(

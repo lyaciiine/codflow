@@ -60,7 +60,15 @@
     "type_override_note": "The customer's amount stays unchanged — only how the parcel travels.",
     "no_desk_match": "No desk matches your search",
     "no_desks_in_wilaya": "This carrier has no stop desk in",
-    "no_desks_switch_hint": "Switch the delivery type to home to dispatch this order."
+    "no_desks_switch_hint": "Switch the delivery type to home to dispatch this order.",
+    "missing_address_title": "This order has no address",
+    "missing_address_hint": "Home delivery needs a street address. Edit the order to add one, or switch to stop desk."
+  },
+  "edit_dialog": {
+    "title": "Edit Order",
+    "success": "Order updated",
+    "error": "Failed to update order",
+    "save": "Save changes"
   },
   "filters": {
     "status": "Status",
@@ -195,7 +203,9 @@
     "tracking_return_received": "Return received",
     "tracking_delivered": "Delivered",
     "tracking_encaissed": "Payment collected",
-    "tracking_payed": "Paid out"
+    "tracking_payed": "Paid out",
+    "custom_answers": "Customer answers",
+    "custom_answers_note": "Answers to your own checkout questions. They are never sent to carriers."
   },
   "next_status": {
     "new": "Confirm Order",
@@ -225,6 +235,8 @@
     "customer_name_placeholder": "Enter customer name",
     "phone_label": "Phone Number",
     "phone_placeholder": "0555123456",
+    "email_label": "Email (optional)",
+    "email_placeholder": "customer@example.com",
     "wilaya_label": "Wilaya",
     "wilaya_placeholder": "Select wilaya",
     "commune_label": "Commune",

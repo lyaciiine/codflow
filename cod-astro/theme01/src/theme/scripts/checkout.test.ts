@@ -76,6 +76,10 @@ function buildDom(): void {
             </label>
           </div>
           <div id="address-field-container"><input id="f-address" /></div>
+          <div data-custom-field="cf_abc12345" data-custom-field-type="text">
+            <input id="f-cf_abc12345" type="text" value="" />
+          </div>
+          <input type="hidden" name="customFieldResponses" id="custom-field-responses-input" value="[]" />
           <button type="submit" id="submit-btn">Confirm</button>
         </form>
       </div>
@@ -602,6 +606,39 @@ describe("submitting", () => {
     const items = JSON.parse(el<HTMLInputElement>("cart-items-input").value);
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ productId: "p1", quantity: 2 });
+  });
+
+  /**
+   * The basket page renders the merchant's own questions through the same
+   * CustomerFields component the product page uses, so it has to serialise the
+   * answers too. It does that inside its own submit handler rather than by
+   * binding a second one, which is exactly the kind of parallel wiring that
+   * rots: the product page keeps working while this one silently sends nothing,
+   * and a required question then blocks every basket order.
+   */
+  it("sends the answers to the merchant's own questions", async () => {
+    seedCart([line()]);
+    await boot();
+    el<HTMLInputElement>("f-cf_abc12345").value = "  Evening  ";
+
+    el("checkout-form").dispatchEvent(
+      new window.Event("submit", { bubbles: true, cancelable: true }),
+    );
+
+    expect(JSON.parse(el<HTMLInputElement>("custom-field-responses-input").value)).toEqual([
+      { id: "cf_abc12345", value: "Evening" },
+    ]);
+  });
+
+  it("sends no answers when the shopper left the question blank", async () => {
+    seedCart([line()]);
+    await boot();
+
+    el("checkout-form").dispatchEvent(
+      new window.Event("submit", { bubbles: true, cancelable: true }),
+    );
+
+    expect(JSON.parse(el<HTMLInputElement>("custom-field-responses-input").value)).toEqual([]);
   });
 
   it("sends every line of a multi-product basket", async () => {

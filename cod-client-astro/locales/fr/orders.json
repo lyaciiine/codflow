@@ -60,7 +60,15 @@
     "type_override_note": "Le montant du client reste inchangé — seule l'acheminement du colis change.",
     "no_desk_match": "Aucun point de retrait ne correspond à votre recherche",
     "no_desks_in_wilaya": "Ce transporteur n'a pas de point de retrait dans",
-    "no_desks_switch_hint": "Passez le type de livraison à domicile pour expédier cette commande."
+    "no_desks_switch_hint": "Passez le type de livraison à domicile pour expédier cette commande.",
+    "missing_address_title": "Cette commande n'a pas d'adresse",
+    "missing_address_hint": "La livraison à domicile nécessite une adresse. Modifiez la commande pour en ajouter une, ou passez en point de retrait."
+  },
+  "edit_dialog": {
+    "title": "Modifier la commande",
+    "success": "Commande mise à jour",
+    "error": "Échec de la mise à jour de la commande",
+    "save": "Enregistrer les modifications"
   },
   "filters": {
     "status": "Statut",
@@ -195,7 +203,9 @@
     "tracking_return_received": "Retour réceptionné",
     "tracking_delivered": "Livré",
     "tracking_encaissed": "Montant encaissé",
-    "tracking_payed": "Paiement effectué"
+    "tracking_payed": "Paiement effectué",
+    "custom_answers": "Réponses du client",
+    "custom_answers_note": "Réponses à vos propres questions de commande. Elles ne sont jamais envoyées aux transporteurs."
   },
   "next_status": {
     "new": "Confirmer la commande",
@@ -225,6 +235,8 @@
     "customer_name_placeholder": "Entrer le nom du client",
     "phone_label": "Numéro de téléphone",
     "phone_placeholder": "0555123456",
+    "email_label": "E-mail (facultatif)",
+    "email_placeholder": "client@exemple.com",
     "wilaya_label": "Wilaya",
     "wilaya_placeholder": "Sélectionner une wilaya",
     "commune_label": "Commune",

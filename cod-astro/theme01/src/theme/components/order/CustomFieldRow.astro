@@ -1,0 +1,76 @@
+---
+/**
+ * One merchant-authored question.
+ *
+ * The label is text the merchant typed into the dashboard, so it is rendered as
+ * an Astro expression — a text node, escaped by the compiler — and never with
+ * `set:html`. This form is on a public page: a label is untrusted input no
+ * matter who wrote it.
+ *
+ * Nothing here decides anything. Whether the field exists, whether it is
+ * required, and what a valid answer looks like all come from the policy
+ * cod-server resolved, and cod-server checks the answer again on submit. The
+ * `required` attribute below is UX — it stops the shopper before a round trip —
+ * not enforcement.
+ */
+import Select from "@/theme/components/ui/Select.astro";
+import type { CheckoutFormCustomField } from "@/core/api/types";
+
+interface Props {
+  field: CheckoutFormCustomField;
+  content: { searchLabel: string; noResultsLabel: string; formRequiredField: string };
+}
+
+const { field, content } = Astro.props;
+
+// Answers reach cod-server inside ONE hidden JSON input, built at submit time
+// from these controls' DOM ids (see checkout.ts / product.ts). The controls
+// themselves are not the transport: the core action validates form input
+// against a fixed whitelist, so a flat `cf_…` field would need a theme deploy
+// for every field a merchant adds. Select still needs a `name` to render its
+// hidden input, and that flat value is simply stripped by the whitelist —
+// harmless, and covered by place-order-input.test.ts.
+const domId = `f-${field.id}`;
+const label = field.required ? `${field.label} *` : field.label;
+---
+
+<div data-custom-field={field.id} data-custom-field-type={field.type}>
+  {field.type === "select" ? (
+    <Select
+      id={domId}
+      name={field.id}
+      label={label}
+      placeholder={label}
+      hideLabel={true}
+      searchPlaceholder={content.searchLabel}
+      noResultsText={content.noResultsLabel}
+      required={field.required}
+      requiredMessage={content.formRequiredField}
+      options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
+    />
+  ) : (
+    <Fragment>
+      <label for={domId} class="sr-only">{field.label}</label>
+      {field.type === "textarea" ? (
+        <textarea
+          id={domId}
+          rows="2"
+          placeholder={label}
+          required={field.required || undefined}
+          maxlength="500"
+          class="form-input"
+        ></textarea>
+      ) : (
+        <input
+          id={domId}
+          type={field.type === "number" ? "number" : "text"}
+          inputmode={field.type === "number" ? "numeric" : undefined}
+          placeholder={label}
+          required={field.required || undefined}
+          maxlength={field.type === "number" ? undefined : "200"}
+          class="form-input"
+        />
+      )}
+    </Fragment>
+  )}
+</div>

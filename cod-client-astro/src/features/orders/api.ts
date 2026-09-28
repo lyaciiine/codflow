@@ -53,6 +53,10 @@ export function updateOrderStatus(id: string, status: string) {
   return apiFetch<DataEnvelope<null>>(`/api/orders/${encodeURIComponent(id)}/status`, json({ method: "PATCH", body: JSON.stringify({ status }) }));
 }
 
+export async function updateOrder(id: string, body: Record<string, unknown>) {
+  return (await apiFetch<DataEnvelope<OrderDetail>>(`/api/orders/${encodeURIComponent(id)}`, json({ method: "PATCH", body: JSON.stringify(body) }))).data;
+}
+
 export function deleteOrder(id: string) {
   return apiFetch<DataEnvelope<null>>(`/api/orders/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

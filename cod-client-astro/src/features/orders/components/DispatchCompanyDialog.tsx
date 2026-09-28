@@ -315,10 +315,31 @@ export function DispatchCompanyDialog({
             )}
           </div>
         )}
+        {/* The server rejects a home dispatch without a street address
+            (MISSING_ADDRESS) — surface that before the attempt, with the edit
+            dialog as the way out. */}
+        {!isStopDesk && !order.address?.trim() && (
+          <div
+            role="alert"
+            className="rounded-lg border border-border bg-muted/50 p-3 text-sm"
+          >
+            <p className="font-semibold text-foreground">
+              {t("dispatch_dialog.missing_address_title")}
+            </p>
+            <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+              {t("dispatch_dialog.missing_address_hint")}
+            </p>
+          </div>
+        )}
         <Button
           type="button"
           className="w-full"
-          disabled={!companyId || (isStopDesk && !stationCode.trim()) || busy}
+          disabled={
+            !companyId ||
+            (isStopDesk && !stationCode.trim()) ||
+            (!isStopDesk && !order.address?.trim()) ||
+            busy
+          }
           onClick={() => void submit()}
         >
           <Building2 size={16} />

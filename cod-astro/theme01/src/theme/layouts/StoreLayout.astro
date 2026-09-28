@@ -5,6 +5,8 @@ import Header from "@/theme/components/layout/Header.astro";
 import Footer from "@/theme/components/layout/Footer.astro";
 import CartDrawer from "@/theme/components/cart/CartDrawer.astro";
 import MobileNav from "@/theme/components/layout/MobileNav.astro";
+import WhatsAppWidget from "@/theme/components/chat/WhatsAppWidget.astro";
+import { showsWidgetOn } from "@/theme/utils/shows-widget-on";
 import type { StoreConfig } from "@/core/api/types";
 import type { StoreFrontContent } from "@/theme/config/content";
 import { Icon } from "astro-icon/components";
@@ -90,6 +92,19 @@ const fontHref = config.fontUrl?.replace(/["<>]/g, "")
             initCart() here as well used to bind every handler twice. */}
         <script>
           import "@/theme/scripts/cart-ui";
+        </script>
+      </>
+    )}
+
+    {/* WhatsApp Chat Widget — merchant-configurable contact handoff.
+        Rendered only when configured, non-null, and enabled on the current surface. 
+        EXCEPTION: On thank-you page, we show an inline button instead of the floating widget. */}
+    {config.whatsapp && content && showsWidgetOn(config.whatsapp.surfaces, Astro.url.pathname) && Astro.url.pathname !== "/thank-you" && (
+      <>
+        <WhatsAppWidget widget={config.whatsapp} content={content} config={config} />
+        {/* Imported for side effect: self-initialises on DOM ready */}
+        <script>
+          import "@/theme/scripts/whatsapp-widget";
         </script>
       </>
     )}

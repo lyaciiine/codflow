@@ -1,9 +1,10 @@
 /**
- * dzverify client + phone normalizer — unit tests
+ * dzverify client — unit tests
  *
  * Interface-driven: every test crosses the module's public seam exactly the
- * way a caller would (mocked fetch for the client, plain inputs for the
- * normalizer). Error taxonomy cases mirror the dz-otp.md table one-for-one.
+ * way a caller would (mocked fetch). Error taxonomy cases mirror the dz-otp.md
+ * table one-for-one. The phone normalizer moved to `cod-shared/lib/phone.ts`
+ * and its tests moved with it.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -12,7 +13,6 @@ import {
   DzverifyError,
   DZVERIFY_ERRORS,
 } from "./dzverify";
-import { normalizeAlgerianPhone } from "./phone";
 
 const API_KEY = "dz-key-test";
 
@@ -179,39 +179,5 @@ describe("createDzverifyClient", () => {
     fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
 
     await expect(client.sendOtp("+213612345678")).rejects.toThrow(TypeError);
-  });
-});
-
-describe("normalizeAlgerianPhone", () => {
-  it("normalizes every local Algerian mobile shape to +213 E.164", () => {
-    expect(normalizeAlgerianPhone("0551234567")).toBe("+213551234567");
-    expect(normalizeAlgerianPhone("551234567")).toBe("+213551234567");
-    expect(normalizeAlgerianPhone("066 123-4567")).toBe("+213661234567");
-    expect(normalizeAlgerianPhone(" 0771234567 ")).toBe("+213771234567");
-    expect(normalizeAlgerianPhone("05 51 23 45 67")).toBe("+213551234567");
-  });
-
-  it("completes already-country-coded forms", () => {
-    expect(normalizeAlgerianPhone("+213551234567")).toBe("+213551234567");
-    expect(normalizeAlgerianPhone("213551234567")).toBe("+213551234567");
-  });
-
-  it("passes other countries through in +CC form", () => {
-    expect(normalizeAlgerianPhone("+33612345678")).toBe("+33612345678");
-    expect(normalizeAlgerianPhone("+971501234567")).toBe("+971501234567");
-  });
-
-  it("returns null for garbage, landlines, and wrong lengths", () => {
-    expect(normalizeAlgerianPhone("abc")).toBeNull();
-    expect(normalizeAlgerianPhone("0211234567")).toBeNull(); // Algerian landline (021…)
-    expect(normalizeAlgerianPhone("1234")).toBeNull();
-    expect(normalizeAlgerianPhone("")).toBeNull();
-    expect(normalizeAlgerianPhone("+21355123456712345")).toBeNull(); // too long after +CC
-    expect(normalizeAlgerianPhone("0551234567x")).toBeNull();
-    expect(normalizeAlgerianPhone("+abc12345")).toBeNull();
-  });
-
-  it("rejects non-Algerian mobiles given without a + prefix", () => {
-    expect(normalizeAlgerianPhone("33612345678")).toBeNull();
   });
 });

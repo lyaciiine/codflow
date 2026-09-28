@@ -92,6 +92,7 @@ describe("initStickyCta", () => {
       } as IntersectionObserverEntry,
     ]);
     expect(cta.classList.contains("is-hidden")).toBe(true);
+    expect(document.body.dataset.stickyCta).toBe("hidden");
 
     // Form leaves viewport towards bottom (scrolling back up)
     observerCallback([
@@ -101,6 +102,7 @@ describe("initStickyCta", () => {
       } as IntersectionObserverEntry,
     ]);
     expect(cta.classList.contains("is-hidden")).toBe(false);
+    expect(document.body.dataset.stickyCta).toBe("visible");
 
     // Form scrolled past completely (user in reviews below form)
     observerCallback([
@@ -110,6 +112,7 @@ describe("initStickyCta", () => {
       } as IntersectionObserverEntry,
     ]);
     expect(cta.classList.contains("is-hidden")).toBe(true);
+    expect(document.body.dataset.stickyCta).toBe("hidden");
   });
 
   it("supports landing page IDs (#lp-sticky-cta and #order-section-wrapper)", () => {

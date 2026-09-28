@@ -88,6 +88,7 @@ CodFlow v1.1.0 — here's what works today:
 - ✅ Optional WhatsApp phone verification at checkout ([DZVerify](https://dzverify.com), off by default)
 - ✅ Optional Cloudflare Turnstile bot protection on the checkout form ([Turnstile](https://www.cloudflare.com/products/turnstile/), off by default)
 - ✅ Legal pages (`/pages/[slug]`) — Terms, Privacy, Refund/Return, Shipping (pre-seeded, merchant-editable) and any custom page, with a checkout consent line linking to them
+- ✅ Merchant-configurable order form — require or hide the address, notes and email, turn a delivery option off, and add up to 5 questions of your own (enforced server-side, not just hidden)
 
 ### Merchant Dashboard (`cod-client-astro`)
 - ✅ Order management with full COD lifecycle tracking
@@ -353,6 +354,7 @@ astro check + tests for theme01.
 | **[docs/LEGAL-PAGES.md](./docs/LEGAL-PAGES.md)** | Terms, Privacy, Refund and Shipping pages — pre-seeded, merchant-editable |
 | **[docs/WHATSAPP-OTP-VERIFICATION.md](./docs/WHATSAPP-OTP-VERIFICATION.md)** | WhatsApp OTP verification feature |
 | **[docs/TURNSTILE.md](./docs/TURNSTILE.md)** | Cloudflare Turnstile checkout bot protection |
+| **[docs/CHECKOUT-FORM.md](./docs/CHECKOUT-FORM.md)** | Merchant-configurable storefront order form and custom questions |
 | **[docs/EMAIL-SENDING.md](./docs/EMAIL-SENDING.md)** | Transactional email feature (Sendili) |
 | **[CONTRIBUTING.md](./CONTRIBUTING.md)** | Development standards and PR workflow |
 | **[AGENTS.md](./AGENTS.md)** | Repository instructions for AI coding assistants |

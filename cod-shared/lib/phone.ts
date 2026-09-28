@@ -1,16 +1,22 @@
 /**
- * Algerian phone normalization to E.164
+ * Algerian phone normalization — the single definition.
  *
- * The storefront order schema accepts free-form phones (min 9 / max 20, no
- * regex) while dzverify requires strict E.164 ("+213612345678"). This module
- * is the single place that reconciles the two.
+ * Two shapes exist in this product and they are not interchangeable:
  *
- * Interface: one function. Returns the E.164 string, or null when the input
- * cannot be normalized (caller surfaces an INVALID_PHONE_FORMAT error).
+ *   E.164 ("+213551234567")   — what dzverify requires, and what a `wa.me`
+ *                               link is built from.
+ *   local  ("0551234567")     — what orders store and what customers are
+ *                               deduplicated on.
  *
- * Accepted inputs (case: Algerian mobile):
+ * It lives in cod-shared because three callers now need it from two packages:
+ * the storefront order schema, the OTP send path, and the merchant's own
+ * WhatsApp number on the widget's write path. A second copy of these rules is
+ * how "0551234567" and "+213551234567" become two customers, or a widget that
+ * links to a number nobody answers.
+ *
+ * Accepted inputs (Algerian mobile):
  *   "0551234567"  "5 51-234 567"  "0551234567 "  → "+213551234567"
- *   "+213551234567" "213551234567"               → "+213551234567"
+ *   "+213551234567" "213551234567" "00213…"      → "+213551234567"
  *   Other countries pass through when already "+CC…" shaped.
  */
 

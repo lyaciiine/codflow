@@ -354,6 +354,68 @@ export const StoreOrderTrackingSchema = z
   })
   .openapi("StoreOrderTracking");
 
+export const StoreWhatsAppWidgetSchema = z
+  .object({
+    href: z.string().openapi({
+      description:
+        "The wa.me link, ready to use. Digits only — a '+' in the path makes WhatsApp " +
+        "answer with an invalid-number page.",
+      example: "https://wa.me/213551234567",
+    }),
+    agentName: z.string().nullable().openapi({
+      description: "Who the shopper is talking to. Null means the theme uses the store name.",
+      example: "أمين",
+    }),
+    caption: z.string().nullable().openapi({
+      description: "The line under the name, e.g. how fast the merchant answers.",
+      example: "نرد خلال دقائق",
+    }),
+    avatarUrl: z.string().nullable().openapi({
+      description: "https only. Null means the theme falls back to the store logo.",
+    }),
+    welcomeMessage: z.string().nullable(),
+    launcherLabel: z.string().nullable().openapi({
+      description: "Text beside the floating launcher. Null renders the icon alone.",
+    }),
+    ctaLabel: z.string().nullable(),
+    prefillGeneral: z.string().nullable().openapi({
+      description:
+        "The message WhatsApp opens with on a page that has no product. May contain " +
+        "{url}, {order} and {store}, which the theme resolves from the page.",
+    }),
+    prefillProduct: z.string().nullable().openapi({
+      description: "Same, for a product or landing page. May also contain {product}.",
+      example: "سلام، بغيت نسقسي على {product}",
+    }),
+    accent: z.enum(["whatsapp", "primary"]).openapi({
+      description: "Brand green, or the store's own primary colour.",
+    }),
+    position: z.enum(["right", "left"]).openapi({
+      description: "Which physical side the launcher sits on, in both LTR and RTL.",
+    }),
+    attention: z.boolean().openapi({
+      description:
+        "One attention pulse per session, suppressed under prefers-reduced-motion.",
+    }),
+    surfaces: z
+      .object({
+        home: z.boolean(),
+        catalog: z.boolean(),
+        product: z.boolean(),
+        pages: z.boolean(),
+        thankYou: z.boolean(),
+        checkout: z.boolean(),
+        landing: z.boolean(),
+      })
+      .openapi({
+        description:
+          "Which kinds of page the launcher appears on. `checkout` and `landing` are off " +
+          "by default: both already carry their own sticky order CTA, and a second " +
+          "floating control competing for the same thumb costs the order.",
+      }),
+  })
+  .openapi("StoreWhatsAppWidget");
+
 export const StoreConfigSchema = z
   .object({
     id: z.string().openapi({ description: "Store UUID" }),
@@ -449,6 +511,38 @@ export const StoreConfigSchema = z
           "merchant saves a legal profile (Settings → Store Pages); RC/NIF are never " +
           "exposed here, only inside the documents themselves.",
       }),
+    checkoutForm: z
+      .object({
+        address: z.enum(["required", "optional"]),
+        notes: z.enum(["optional", "hidden"]),
+        email: z.enum(["required", "optional", "hidden"]),
+        deliveryOptions: z.object({ home: z.boolean(), stopDesk: z.boolean() }),
+        customFields: z.array(
+          z.object({
+            id: z.string().openapi({ example: "cf_a1b2c3d4" }),
+            label: z.string().openapi({ example: "Preferred delivery time" }),
+            type: z.enum(["text", "textarea", "number", "select"]),
+            required: z.boolean(),
+            options: z.array(z.string()).optional(),
+          }),
+        ),
+      })
+      .openapi({
+        description:
+          "The merchant's order-form configuration, already resolved: a store that never " +
+          "customised it gets the defaults, which describe the form exactly as it behaved " +
+          "before this feature existed. The theme renders this and holds no form rules of " +
+          "its own — cod-server enforces every one of them on POST /store/orders, so a " +
+          "hidden field posted from an edge-cached page is dropped and a required one " +
+          "refuses the order. The raw stored column is never exposed.",
+      }),
+    whatsapp: StoreWhatsAppWidgetSchema.nullable().openapi({
+      description:
+        "The WhatsApp contact widget, already resolved — or null, which is what a store " +
+        "gets when the widget is off, has no number, or holds a number that no longer " +
+        "normalises. A theme's entire gate is this being non-null and the current surface " +
+        "being on in `surfaces`. The raw stored column is never exposed.",
+    }),
   })
   .openapi("StoreConfig");
 

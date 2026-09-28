@@ -27,7 +27,9 @@
     "stock_management": "Stock Management",
     "api_reference": "API Reference",
     "mcp": "AI Agents",
-    "store_pages": "Pages"
+    "store_pages": "Pages",
+    "checkout_form": "Checkout form",
+    "whatsapp": "WhatsApp"
   },
   "navbar": {
     "search_placeholder": "Search for orders, customers...",

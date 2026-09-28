@@ -223,6 +223,18 @@ export async function dispatchToCompany(c: Context<AppContext>) {
     );
   }
 
+  // Home delivery dispatches must have a street address — required by all carriers.
+  // When a store hides the checkout address field or the customer left it blank,
+  // the merchant collects the address (e.g. by phone) and adds it before dispatch.
+  const effectiveAddress = (order.address ?? "").trim();
+  if (effectiveDeliveryType === "home" && !effectiveAddress) {
+    throw new ValidationError(
+      "Home delivery orders require a street address before dispatching. Please add an address to the order.",
+      ERROR_CODES.MISSING_ADDRESS,
+      { orderId, deliveryType: effectiveDeliveryType }
+    );
+  }
+
   // Get provider adapter (throws if unsupported or missing credentials)
   let provider;
   try {
@@ -557,6 +569,14 @@ export async function bulkDispatch(c: Context<AppContext>) {
     }
     if (!order.wilayaId || !order.communeId) {
       orderResults.push({ orderId, orderNumber: order.orderNumber, error: "Missing wilaya or commune" });
+      continue;
+    }
+
+    // Same rule as single dispatch: home delivery needs a street address.
+    // Without this, bulk dispatch becomes the bypass around the
+    // checkout-form-policy (a hidden checkout address field).
+    if (order.deliveryType === "home" && !(order.address ?? "").trim()) {
+      orderResults.push({ orderId, orderNumber: order.orderNumber, error: "Missing address for home delivery — add it to the order first" });
       continue;
     }
 

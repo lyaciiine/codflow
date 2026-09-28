@@ -240,6 +240,80 @@ describe("Orders routes (OpenAPIHono)", () => {
       expect(res.status).toBe(400);
     });
 
+    /**
+     * A phone order can carry an email too — receipts today, digital delivery
+     * later. It stays OPTIONAL here no matter what the storefront's Checkout
+     * Form Policy says: that policy is about what shoppers are asked, and staff
+     * on a call either have the address or they do not. Requiring it would only
+     * produce invented ones.
+     */
+    it("stores a normalised email when staff enter one", async () => {
+      vi.mocked(queries.createOrder).mockResolvedValue(undefined as any);
+      vi.mocked(resolveFee.resolveDeliveryFee).mockResolvedValue({ deliveryFee: 600 } as any);
+      vi.mocked(resolveFee.applyFreeShippingOffer).mockResolvedValue(600);
+      mockDb = dbSelectReturning({ id: "cust_1" });
+
+      const res = await app.request("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...validOrder, customerEmail: "  Shopper@Example.COM " }),
+      });
+
+      expect(res.status).toBe(201);
+      // Same canonical form the storefront writes, so one customer's address is
+      // one string in the column however the order was taken.
+      expect(vi.mocked(queries.createOrder).mock.calls.at(-1)?.[1]).toMatchObject({
+        customerEmail: "shopper@example.com",
+      });
+    });
+
+    it("creates an order without one — every phone order taken today", async () => {
+      vi.mocked(queries.createOrder).mockResolvedValue(undefined as any);
+      vi.mocked(resolveFee.resolveDeliveryFee).mockResolvedValue({ deliveryFee: 600 } as any);
+      vi.mocked(resolveFee.applyFreeShippingOffer).mockResolvedValue(600);
+      mockDb = dbSelectReturning({ id: "cust_1" });
+
+      const res = await app.request("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validOrder),
+      });
+
+      expect(res.status).toBe(201);
+      expect(vi.mocked(queries.createOrder).mock.calls.at(-1)?.[1]).toMatchObject({
+        customerEmail: null,
+      });
+    });
+
+    it("treats an empty email box as no email, not as a value", async () => {
+      // A form always submits its inputs; an untouched box must not become "".
+      vi.mocked(queries.createOrder).mockResolvedValue(undefined as any);
+      vi.mocked(resolveFee.resolveDeliveryFee).mockResolvedValue({ deliveryFee: 600 } as any);
+      vi.mocked(resolveFee.applyFreeShippingOffer).mockResolvedValue(600);
+      mockDb = dbSelectReturning({ id: "cust_1" });
+
+      const res = await app.request("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...validOrder, customerEmail: "   " }),
+      });
+
+      expect(res.status).toBe(201);
+      expect(vi.mocked(queries.createOrder).mock.calls.at(-1)?.[1]).toMatchObject({
+        customerEmail: null,
+      });
+    });
+
+    it("rejects a malformed email rather than storing it", async () => {
+      const res = await app.request("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...validOrder, customerEmail: "not-an-email" }),
+      });
+
+      expect(res.status).toBe(400);
+    });
+
     it("rejects a non-Algerian phone number", async () => {
       const res = await app.request("/api/orders", {
         method: "POST",
@@ -268,6 +342,217 @@ describe("Orders routes (OpenAPIHono)", () => {
       const res = await app.request("/api/orders/missing", { method: "DELETE" });
 
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe("PATCH /api/orders/{id}", () => {
+    const patch = {
+      customerName: "Ahmed Benali",
+      phone: "0661234567",
+      address: "45 Boulevard Front de Mer",
+    };
+
+    it("updates the order and returns the refreshed detail", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(orderRow() as any);
+      vi.mocked(queries.updateOrder).mockResolvedValue(undefined as any);
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+
+      expect(res.status).toBe(200);
+      const body: any = await res.json();
+      expect(body.data.orderNumber).toBe("ORD-20260327-0042");
+      expect(queries.updateOrder).toHaveBeenCalledWith(
+        mockDb,
+        "ord_1",
+        expect.objectContaining({ customerName: "Ahmed Benali", phone: "0661234567" })
+      );
+    });
+
+    it("normalises the email and treats an empty address box as a clear", async () => {
+      // stop_desk: clearing the address is legal here, so the preprocess
+      // (whitespace → null) is observable without tripping MISSING_ADDRESS.
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ deliveryType: "stop_desk", address: "Old address" }) as any
+      );
+      vi.mocked(queries.updateOrder).mockResolvedValue(undefined as any);
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerEmail: "  Shopper@Example.COM ", address: "   " }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(vi.mocked(queries.updateOrder).mock.calls.at(-1)?.[2]).toMatchObject({
+        customerEmail: "shopper@example.com",
+        address: null,
+      });
+    });
+
+    it("records an address on an order the checkout shipped without one", async () => {
+      // The whole point of the checkout-form-policy flow: an address-less home
+      // order accepts an address (and only an address-adding edit) later.
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ address: null }) as any
+      );
+      vi.mocked(queries.updateOrder).mockResolvedValue(undefined as any);
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: "Cité 200 logements, Birtouta" }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(queries.updateOrder).toHaveBeenCalled();
+    });
+
+    it("returns 400 MISSING_ADDRESS when the edit empties a home order's address", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(orderRow() as any);
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: "   " }),
+      });
+
+      expect(res.status).toBe(400);
+      const body: any = await res.json();
+      expect(body.code).toBe(ERROR_CODES.MISSING_ADDRESS);
+    });
+
+    it("returns 400 MISSING_ADDRESS when switching to home without any address", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ deliveryType: "stop_desk", address: null }) as any
+      );
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliveryType: "home" }),
+      });
+
+      expect(res.status).toBe(400);
+      const body: any = await res.json();
+      expect(body.code).toBe(ERROR_CODES.MISSING_ADDRESS);
+    });
+
+    it("lets a notes-only edit pass on an address-less home order", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ address: null }) as any
+      );
+      vi.mocked(queries.updateOrder).mockResolvedValue(undefined as any);
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: "Call before delivery" }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(queries.updateOrder).toHaveBeenCalledWith(
+        mockDb,
+        "ord_1",
+        expect.objectContaining({ notes: "Call before delivery" })
+      );
+    });
+
+    it("checks wilaya and commune against the reference tables", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(orderRow() as any);
+      vi.mocked(queries.updateOrder).mockResolvedValue(undefined as any);
+      mockDb = dbSelectReturning({ id: "c-16-001", wilayaId: 16 });
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wilayaId: 16, communeId: "c-16-001" }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(queries.updateOrder).toHaveBeenCalled();
+    });
+
+    it("returns 400 for a commune outside the selected wilaya", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(orderRow() as any);
+      mockDb = dbSelectReturning({ id: "c-31-001", wilayaId: 31 });
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wilayaId: 16, communeId: "c-31-001" }),
+      });
+
+      expect(res.status).toBe(400);
+      const body: any = await res.json();
+      expect(body.code).toBe(ERROR_CODES.MISSING_WILAYA_COMMUNE);
+    });
+
+    it("returns 422 when the order is already dispatched", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ trackingNumber: "NE123DZ" }) as any
+      );
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+
+      expect(res.status).toBe(422);
+      const body: any = await res.json();
+      expect(body.code).toBe(ERROR_CODES.ORDER_ALREADY_DISPATCHED);
+    });
+
+    it("returns 422 on a terminal (cancelled) order", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ status: "cancelled" }) as any
+      );
+
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+
+      expect(res.status).toBe(422);
+      const body: any = await res.json();
+      expect(body.code).toBe(ERROR_CODES.INVALID_STATUS_TRANSITION);
+    });
+
+    it("returns 404 when the order does not exist", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(null as any);
+
+      const res = await app.request("/api/orders/missing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("rejects a non-Algerian phone number with 400", async () => {
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: "12345" }),
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects a malformed email with 400", async () => {
+      const res = await app.request("/api/orders/ord_1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerEmail: "not-an-email" }),
+      });
+
+      expect(res.status).toBe(400);
     });
   });
 

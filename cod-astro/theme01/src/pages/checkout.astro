@@ -133,7 +133,12 @@ const turnstileEnabled = config.turnstileEnabled === true && Boolean(config.turn
           class="rounded-[var(--radius-card)] border px-4 py-5 sm:px-5"
           style="border-color: var(--clr-border); background: var(--clr-surface)"
         >
-          <CustomerFields content={content} fieldErrors={fieldErrors} isRTL={isRTL} />
+          <CustomerFields
+            content={content}
+            fieldErrors={fieldErrors}
+            isRTL={isRTL}
+            formPolicy={config.checkoutForm}
+          />
 
           {otpEnabled && <OtpStep content={content} isRTL={isRTL} />}
 

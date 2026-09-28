@@ -1,10 +1,13 @@
-import { MapPin, Phone, UserRound } from "lucide-react";
+import { Mail, MapPin, Phone, UserRound } from "lucide-react";
 import { Card } from "@/components/ui";
 import { useT } from "@/i18n/react";
 import type { OrderDetail } from "@/features/orders/types";
 
 interface OrderCustomerCardProps {
-  order: Pick<OrderDetail, "customerName" | "phone" | "wilaya" | "commune" | "address">;
+  order: Pick<
+    OrderDetail,
+    "customerName" | "phone" | "wilaya" | "commune" | "address" | "customerEmail"
+  >;
 }
 
 export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
@@ -30,6 +33,18 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
               <Phone size={13} />
               {order.phone}
             </a>
+            {/* Only when the shopper gave one — an empty row would suggest the
+                merchant collects an email when they may not have asked. */}
+            {order.customerEmail && (
+              <a
+                href={`mailto:${order.customerEmail}`}
+                className="mt-1 flex items-center gap-1 text-sm text-link"
+                dir="ltr"
+              >
+                <Mail size={13} />
+                {order.customerEmail}
+              </a>
+            )}
           </div>
         </div>
         <div className="flex items-start gap-3">
