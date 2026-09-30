@@ -15,6 +15,10 @@ async function fetch(
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), STORE_API_TIMEOUT_MS);
+  console.log("FETCH DEBUG:", {
+    COD_SERVER_URL,
+    HAS_KEY: Boolean(STORE_API_KEY),
+  });
   try {
     return await globalThis.fetch(input, { ...init, signal: controller.signal });
   } finally {
@@ -25,6 +29,7 @@ async function fetch(
 function storeHeaders() {
   return {
     "X-Store-API-Key": STORE_API_KEY!,
+    "x-store-key": STORE_API_KEY!,
     "Content-Type": "application/json",
   };
 }
