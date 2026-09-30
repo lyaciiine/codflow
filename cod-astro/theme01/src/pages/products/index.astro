@@ -7,8 +7,6 @@ import StoreLayout from "@/theme/layouts/StoreLayout.astro";
 import ProductsListContent from "@/theme/components/products/ProductsListContent.astro";
 import { getStoreContext } from "@/theme/config/store";
 
-export const prerender = false;
-
 // ── STREAMING OPTIMIZATION ──
 // Store context is fetched first (needed for layout)
 // Products and categories are fetched inside streaming component

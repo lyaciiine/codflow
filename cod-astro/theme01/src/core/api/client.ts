@@ -15,10 +15,6 @@ async function fetch(
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), STORE_API_TIMEOUT_MS);
-  console.log("FETCH DEBUG:", {
-    COD_SERVER_URL,
-    HAS_KEY: Boolean(STORE_API_KEY),
-  });
   try {
     return await globalThis.fetch(input, { ...init, signal: controller.signal });
   } finally {
@@ -40,10 +36,6 @@ export async function fetchStoreConfig(): Promise<StoreConfig | null> {
     });
     if (!res.ok) return null;
     const json = (await res.json()) as { data: StoreConfig };
-    const config = json.data
-      ? { ...json.data, storeApiKey: json.data.storeApiKey ? "<REDACTED>" : json.data.storeApiKey }
-      : null;
-    console.log("CONFIG RES:", JSON.stringify(config));
     return json.data ?? null;
   } catch {
     return null;
@@ -70,9 +62,7 @@ export async function fetchProductsRaw(params?: {
     });
     if (!res.ok) return [];
     const json = await res.json();
-    const products = (json as any).data ?? [];
-    console.log("PRODUCTS RES:", JSON.stringify(products));
-    return products;
+    return (json as any).data ?? [];
   } catch {
     return [];
   }
