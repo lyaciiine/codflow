@@ -29,7 +29,6 @@ async function fetch(
 function storeHeaders() {
   return {
     "X-Store-API-Key": STORE_API_KEY!,
-    "x-store-key": STORE_API_KEY!,
     "Content-Type": "application/json",
   };
 }
