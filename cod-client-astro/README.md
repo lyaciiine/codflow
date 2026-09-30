@@ -85,7 +85,7 @@ live in cod-server's schema) plus one KV namespace. See
 Client bundles must never contain secrets or the legacy dashboard domain —
 `verify-shells.mjs` enforces both at build time.
 
-## Architecture in one paragraph
+## Architecture in one paragraph:
 
 Every page is a prerendered Shell that ships zero data. Its root island mounts
 `RequireAuth`, which checks the session (silent spinner at most) and either
