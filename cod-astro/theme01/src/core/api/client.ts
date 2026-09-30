@@ -41,6 +41,10 @@ export async function fetchStoreConfig(): Promise<StoreConfig | null> {
     });
     if (!res.ok) return null;
     const json = (await res.json()) as { data: StoreConfig };
+    const config = json.data
+      ? { ...json.data, storeApiKey: json.data.storeApiKey ? "<REDACTED>" : json.data.storeApiKey }
+      : null;
+    console.log("CONFIG RES:", JSON.stringify(config));
     return json.data ?? null;
   } catch {
     return null;
@@ -67,7 +71,9 @@ export async function fetchProductsRaw(params?: {
     });
     if (!res.ok) return [];
     const json = await res.json();
-    return (json as any).data ?? [];
+    const products = (json as any).data ?? [];
+    console.log("PRODUCTS RES:", JSON.stringify(products));
+    return products;
   } catch {
     return [];
   }
