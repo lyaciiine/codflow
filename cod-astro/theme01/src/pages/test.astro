@@ -1,0 +1,128 @@
+---
+import StoreLayout from "@/theme/layouts/StoreLayout.astro";
+import OrderForm from "@/theme/components/order/OrderForm.astro";
+import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
+import { getStoreContext } from "@/theme/config/store";
+import { fetchLandingPageBySlug } from "@/core/api/client";
+import { actions, isInputError } from "astro:actions";
+
+const storeCtx = await getStoreContext();
+const { config, content, isRTL } = storeCtx;
+
+// ⚠️ هام جداً: بدّل "bracelet-metropole" بالـ Slug الحقيقي تاع المنتج كيما راه مكتوب في الداشبورد تاعك!
+const lp = await fetchLandingPageBySlug("bracelet-metropole"); 
+const product = lp?.product;
+
+const cur = config.currencySymbol;
+const basePrice = product?.price ?? 28000;
+const comparePrice = product?.compareAtPrice ?? null;
+const isOutOfStock = product?.trackInventory && product.inventory === 0;
+
+const result = Astro.getActionResult(actions.placeOrder);
+if (result?.data?.orderNumber) {
+  return Astro.redirect(`/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}`, 303);
+}
+const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
+const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
+---
+
+<StoreLayout config={config} content={content} title="Bracelet Metropole - عرض خاص" marketing={true}>
+  {product && (
+    <div class="bg-gray-50 min-h-screen pb-16 font-sans" dir="rtl">
+      
+      <!-- البيانات المخفية لعمل السكريبتات -->
+      <div id="page-data" class="sr-only" data-base-price={basePrice} data-cur={cur} data-is-rtl={isRTL ? "1" : "0"} data-shipping-calc={content.shippingCalculated} data-offers={JSON.stringify(product.offers)} data-product-id={product.id} data-product-name={product.name} />
+      <ShippingIsland server:defer />
+
+      <!-- رأس الصفحة (Hero Section) -->
+      <header class="bg-white shadow-sm pt-12 pb-8 px-4 text-center">
+        <h1 class="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
+          تألق بجاذبية <span class="text-emerald-700">Bracelet Metropole</span>
+        </h1>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto font-medium mb-6">
+          التصميم العصري الذي يجمع بين الفخامة والبساطة. متوفر الآن باللونين الفضي والأخضر الملكي.
+        </p>
+        <div class="inline-block bg-red-100 text-red-700 font-bold px-5 py-2 rounded-full text-sm mb-4 animate-pulse border border-red-200">
+          🔥 عرض محدود - التوصيل متوفر لـ 58 ولاية!
+        </div>
+      </header>
+
+      <!-- محتوى الصفحة (شبكة من عمودين) -->
+      <main class="max-w-6xl mx-auto mt-10 px-4 grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        
+        <!-- القسم الأيمن: تفاصيل المنتج والصور (ياخذ 7 أعمدة) -->
+        <div class="md:col-span-7 space-y-6">
+          <!-- صورة المنتج -->
+          <div class="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 aspect-[4/3] relative">
+            <!-- بدّل هذا الرابط برابط صورة المنتج تاعك -->
+            <img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Bracelet Metropole" class="w-full h-full object-cover transition-transform hover:scale-105 duration-500" />
+            <div class="absolute top-4 right-4 bg-emerald-600 text-white font-bold px-3 py-1 rounded-lg shadow-md">
+              الأكثر مبيعاً ⭐️
+            </div>
+          </div>
+          
+          <!-- مميزات المنتج -->
+          <div class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">لماذا تختار Bracelet Metropole؟</h3>
+            <ul class="space-y-5 text-gray-700 font-medium text-lg">
+              <li class="flex items-start gap-4">
+                <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 shrink-0 mt-1">✓</span>
+                <p><strong>جودة ممتازة:</strong> مصنوعة من مواد مقاومة للصدأ تحافظ على لمعانها لمدة طويلة.</p>
+              </li>
+              <li class="flex items-start gap-4">
+                <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 shrink-0 mt-1">✓</span>
+                <p><strong>تناسب جميع الأذواق:</strong> تصميم راقي يتماشى مع اللباس الكلاسيكي أو العصري.</p>
+              </li>
+              <li class="flex items-start gap-4">
+                <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 shrink-0 mt-1">✓</span>
+                <p><strong>دفع آمن:</strong> الدفع عند الاستلام، لا تدفع أي شيء حتى تستلم منتجك بين يديك.</p>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- القسم الأيسر: فورم الدفع (ياخذ 5 أعمدة ويبقى ثابت كي تهبط) -->
+        <div class="md:col-span-5 bg-white p-6 md:p-8 rounded-3xl shadow-xl border border-gray-200 sticky top-6" id="order-section-wrapper">
+          <div class="text-center mb-8">
+            <h2 class="text-2xl font-black text-gray-900">أكمل طلبك الآن</h2>
+            <p class="text-gray-500 mt-2">يرجى إدخال معلوماتك لتأكيد الطلب بسرعة</p>
+          </div>
+          
+          <!-- مكون الفورمولار الأصلي -->
+          <OrderForm
+            product={product}
+            content={content}
+            fieldErrors={fieldErrors}
+            serverError={serverError}
+            basePrice={basePrice}
+            defaultVariant={product?.variants?.[0] ?? null}
+            cur={cur}
+            isRTL={isRTL}
+            offers={product.offers}
+            isOutOfStock={isOutOfStock}
+            otpEnabled={config.otpEnabled === true}
+            turnstileEnabled={config.turnstileEnabled === true}
+            pages={config.pages ?? []}
+            formPolicy={config.checkoutForm}
+          />
+        </div>
+
+      </main>
+    </div>
+  )}
+  
+  <!-- إذا كان الـ slug غالط وما جابش المنتج -->
+  {!product && (
+    <div class="min-h-screen flex items-center justify-center bg-gray-50 text-center px-4">
+      <div class="bg-white p-8 rounded-2xl shadow-md border border-red-100">
+        <h2 class="text-2xl font-bold text-red-600 mb-2">عذراً، لم يتم العثور على المنتج.</h2>
+        <p class="text-gray-600">يرجى التأكد من أن رابط المنتج (Slug) المدخل في الكود صحيح وموجود في قاعدة البيانات.</p>
+      </div>
+    </div>
+  )}
+</StoreLayout>
+
+<!-- استيراد ملفات الجافاسكريبت الضرورية -->
+<script src="../../theme/scripts/product.ts"></script>
+<script src="../../theme/scripts/otp-step.ts"></script>
+<script src="../../theme/scripts/turnstile-field.ts"></script>
