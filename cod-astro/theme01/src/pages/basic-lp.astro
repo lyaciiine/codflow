@@ -1,0 +1,116 @@
+---
+import StoreLayout from "@/theme/layouts/StoreLayout.astro";
+import OrderForm from "@/theme/components/order/OrderForm.astro";
+import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
+import { getStoreContext } from "@/theme/config/store";
+import { fetchLandingPageBySlug } from "@/core/api/client";
+import { actions } from "astro:actions";
+import { isInputError } from "astro:actions";
+
+const storeCtx = await getStoreContext();
+const { config, content, isRTL } = storeCtx;
+
+// استدعاء صفحة الهبوط بالـ Slug الصحيح (مثلاً: lacoste أو اسم صفحة الهبوط اللي راك دايرها في الداشبورد)
+const lp = await fetchLandingPageBySlug("lacoste"); 
+const product = lp?.product;
+
+const cur = config.currencySymbol;
+const defaultVariant = product?.hasVariants
+  ? (product.variants.find((v: any) => v.isDefault) ?? product.variants[0])
+  : null;
+const basePrice = defaultVariant?.price ?? product?.price ?? 0;
+const comparePrice = defaultVariant?.compareAtPrice ?? product?.compareAtPrice ?? null;
+const isOutOfStock = product?.trackInventory && product.inventory === 0;
+const defaultVariantId = defaultVariant?.id ?? null;
+
+// معالجة إرسال الطلبية
+const result = Astro.getActionResult(actions.placeOrder);
+if (result?.data?.orderNumber) {
+  return Astro.redirect(
+    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
+    303,
+  );
+}
+const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
+const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
+---
+
+<StoreLayout config={config} content={content} title={lp?.metaTitle || "عرض خاص"} marketing={true}>
+  {product && (
+    <div class="bg-gray-50 min-h-screen pb-16" dir={isRTL ? "rtl" : "ltr"}>
+      
+      <!-- جسر البيانات اللازم للسكريبتات والولايات -->
+      <div
+        id="page-data"
+        class="sr-only"
+        data-variants={JSON.stringify(product.variants ?? [])}
+        data-base-price={basePrice}
+        data-compare-price={comparePrice ?? ""}
+        data-cur={cur}
+        data-is-rtl={isRTL ? "1" : "0"}
+        data-shipping-label={content.shippingLabel}
+        data-shipping-calc={content.shippingCalculated}
+        data-shipping-free={content.shippingFree}
+        data-total-label={content.totalLabel}
+        data-commune-placeholder={content.formCommunePlaceholder}
+        data-commune-loading={content.formCommuneLoading}
+        data-commune-disabled={content.formCommuneDisabled}
+        data-offers={JSON.stringify(product.offers ?? [])}
+        data-track-inventory={product.trackInventory ? "1" : "0"}
+        data-out-of-stock-label={content.outOfStock}
+        data-qty-max-stock={content.qtyMaxStock}
+        data-inventory={String(product.inventory ?? 0)}
+        data-pixel-id={lp.tracking?.pixelId ?? config.pixelId ?? ""}
+        data-phone-invalid={content.formPhoneInvalid}
+        data-product-id={product.id}
+        data-product-name={product.name}
+      />
+
+      <ShippingIsland server:defer />
+
+      <!-- 🎨 مساحة الديزاين الحر تاعك (حط هنا التصاور، الأنيميشن، أو أي شي حابو) -->
+      <section class="max-w-2xl mx-auto px-4 pt-12 text-center">
+        <h1 class="text-4xl font-black text-gray-900 mb-4">صفحة الهبوط الخاصة بي</h1>
+        <p class="text-gray-600 mb-8">صمم ديكورك هنا براحتك، وفورمولار الدفع رايح يبقا يستنى الزبون لتحت...</p>
+      </section>
+
+      <!-- 📦 فورمولار الدفع وحده صافي -->
+      <div class="max-w-xl mx-auto px-4" id="order-section-wrapper">
+        <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+          <OrderForm
+            product={product}
+            content={content}
+            fieldErrors={fieldErrors}
+            serverError={serverError}
+            basePrice={basePrice}
+            defaultVariant={defaultVariant ?? null}
+            cur={cur}
+            isRTL={isRTL}
+            offers={product.offers}
+            defaultVariantId={defaultVariantId}
+            isOutOfStock={isOutOfStock}
+            otpEnabled={config.otpEnabled === true}
+            turnstileEnabled={config.turnstileEnabled === true}
+            turnstileSiteKey={config.turnstileSiteKey ?? null}
+            pages={config.pages ?? []}
+            formPolicy={config.checkoutForm}
+            landingPageSlug={lp.slug}
+          />
+        </div>
+      </div>
+
+    </div>
+  )}
+
+  {!product && (
+    <div class="flex flex-col items-center justify-center py-24 px-6 text-center">
+      <h1 class="text-2xl font-black text-red-600">عذراً، لم يتم العثور على صفحة الهبوط أو أن الslug خاطئ.</h1>
+    </div>
+  )}
+</StoreLayout>
+
+<!-- السكريبتات الأساسية -->
+<script src="../theme/scripts/product.ts"></script>
+<script src="../theme/scripts/otp-step.ts"></script>
+<script src="../theme/scripts/turnstile-field.ts"></script>
+<script src="../theme/scripts/track-abandonment.ts"></script>
