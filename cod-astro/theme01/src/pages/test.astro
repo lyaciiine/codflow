@@ -1,181 +1,54 @@
 ---
 import StoreLayout from "@/theme/layouts/StoreLayout.astro";
-import OrderForm from "@/theme/components/order/OrderForm.astro";
-import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
+import ProductDetailContent from "@/theme/components/product/ProductDetailContent.astro";
 import { getStoreContext } from "@/theme/config/store";
-import { fetchProductBySlug } from "@/core/api/client";
-import { actions, isInputError } from "astro:actions";
-import { Icon } from "astro-icon/components";
+import { actions } from "astro:actions";
+import { isInputError } from "astro:actions";
 
 const storeCtx = await getStoreContext();
 const { config, content, isRTL } = storeCtx;
 
-// نجيبو المنتج تاع الصح من قاعدة البيانات
-const product = await fetchProductBySlug("bracelet-metropole"); 
-
-const cur = config.currencySymbol;
-const basePrice = product?.price ?? 28000;
-const comparePrice = product?.compareAtPrice ?? null;
-const isOutOfStock = product?.trackInventory && product.inventory === 0;
-
+// التحقق من عملية الطلب
 const result = Astro.getActionResult(actions.placeOrder);
 if (result?.data?.orderNumber) {
-  return Astro.redirect(`/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}`, 303);
+  return Astro.redirect(
+    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
+    303,
+  );
 }
-const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
-const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
+const fieldErrors  = isInputError(result?.error) ? result.error.fields : {};
+const serverError  = result?.error && !isInputError(result.error) ? result.error.message : null;
 ---
 
-<StoreLayout config={config} content={content} title="Bracelet Metropole - الأناقة الحقيقية" marketing={true}>
-  {product && (
-    <div class="bg-gray-50 min-h-screen font-sans selection:bg-emerald-200 selection:text-emerald-900" dir="rtl">
-      
-      <!-- جسر البيانات المخفي للسكريبتات -->
-      <div id="page-data" class="sr-only" data-base-price={basePrice} data-cur={cur} data-is-rtl={isRTL ? "1" : "0"} data-shipping-calc={content.shippingCalculated} data-offers={JSON.stringify(product.offers)} data-product-id={product.id} data-product-name={product.name} />
-      <ShippingIsland server:defer />
-
-      <!-- شريط إعلاني علوي (Top Banner) -->
-      <div class="bg-emerald-800 text-emerald-50 text-center py-2 text-sm font-bold tracking-wide">
-        🎉 عرض خاص: توصيل سريع لجميع الولايات الجزائرية | الدفع عند الاستلام
-      </div>
-
-      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
-        <div class="lg:grid lg:grid-cols-12 lg:gap-12 items-start">
-          
-          <!-- القسم الأيمن: العرض التقديمي (7 أعمدة) -->
-          <div class="lg:col-span-7 space-y-10">
-            
-            <!-- عنوان المنتج والهوك (Hook) -->
-            <div>
-              <div class="flex items-center gap-2 mb-3">
-                <span class="bg-amber-100 text-amber-800 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">الأكثر طلباً</span>
-                <div class="flex text-amber-400">
-                  <Icon name="heroicons:star-solid" class="w-5 h-5" />
-                  <Icon name="heroicons:star-solid" class="w-5 h-5" />
-                  <Icon name="heroicons:star-solid" class="w-5 h-5" />
-                  <Icon name="heroicons:star-solid" class="w-5 h-5" />
-                  <Icon name="heroicons:star-solid" class="w-5 h-5" />
-                </div>
-                <span class="text-sm text-gray-500 font-medium">(+120 تقييم)</span>
-              </div>
-              <h1 class="text-4xl sm:text-5xl font-black text-gray-900 leading-tight mb-4">
-                ارتقِ بإطلالتك مع <span class="text-emerald-700 block mt-1">Bracelet Metropole</span>
-              </h1>
-              <p class="text-lg text-gray-600 font-medium leading-relaxed max-w-2xl">
-                ليس مجرد سوار، بل بصمة تعكس شخصيتك. تصميم عصري يمزج بين الفخامة والبساطة، متوفر باللونين الفضي اللامع والأخضر الملكي الساحر.
-              </p>
-            </div>
-
-            <!-- صورة المنتج الرئيسية (تقدر تبدلها بصورة حقيقية) -->
-            <div class="relative rounded-3xl overflow-hidden shadow-2xl ring-1 ring-gray-900/5 group">
-              <img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Bracelet Metropole" class="w-full object-cover aspect-[4/3] transform transition-transform duration-700 group-hover:scale-105" />
-              <div class="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent pointer-events-none"></div>
-            </div>
-
-            <!-- مميزات المنتج بستايل بريميوم -->
-            <div class="grid sm:grid-cols-2 gap-6">
-              <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-start">
-                <div class="bg-emerald-50 p-3 rounded-xl text-emerald-600 shrink-0">
-                  <Icon name="heroicons:shield-check" class="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 class="font-bold text-gray-900 mb-1">جودة لا تضاهى</h4>
-                  <p class="text-sm text-gray-600">مصنوع من الفولاذ المقاوم للصدأ، يحافظ على لمعانه ولا يتأثر بالماء.</p>
-                </div>
-              </div>
-              
-              <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-start">
-                <div class="bg-emerald-50 p-3 rounded-xl text-emerald-600 shrink-0">
-                  <Icon name="heroicons:sparkles" class="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 class="font-bold text-gray-900 mb-1">تصميم مرن</h4>
-                  <p class="text-sm text-gray-600">يناسب جميع المقاسات بفضل نظام الإغلاق القابل للتعديل بسهولة.</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- قسم تقييمات الزبائن (Social Proof) -->
-            <div class="bg-emerald-900 rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden">
-              <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-emerald-700 rounded-full blur-3xl opacity-50"></div>
-              <h3 class="text-2xl font-bold mb-8 relative z-10">واش قالو زبائننا؟</h3>
-              
-              <div class="space-y-6 relative z-10">
-                <div class="bg-emerald-800/50 backdrop-blur-sm p-5 rounded-2xl border border-emerald-700/50">
-                  <div class="flex items-center gap-2 mb-2 text-amber-400">
-                    <Icon name="heroicons:star-solid" class="w-4 h-4" /><Icon name="heroicons:star-solid" class="w-4 h-4" /><Icon name="heroicons:star-solid" class="w-4 h-4" /><Icon name="heroicons:star-solid" class="w-4 h-4" /><Icon name="heroicons:star-solid" class="w-4 h-4" />
-                  </div>
-                  <p class="text-emerald-50 text-sm leading-relaxed mb-3">"البراسلي وصلني اليوم، الكاليتي تاعو روعة خير من التصاور بزااف! الأخضر الملكي عطاه هيبة سبيسيال. يعطيكوم الصحة."</p>
-                  <p class="text-xs font-bold text-emerald-300">— أمين من العاصمة</p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- القسم الأيسر: فورم الدفع اللاصق (5 أعمدة) -->
-          <div class="lg:col-span-5 mt-10 lg:mt-0 relative">
-            <div class="bg-white rounded-[2rem] shadow-2xl shadow-gray-200/50 border border-gray-100 p-6 sm:p-8 sticky top-8 z-20" id="order-section-wrapper">
-              
-              <div class="text-center mb-8 border-b border-gray-100 pb-6">
-                <h2 class="text-2xl font-black text-gray-900">أكمل طلبك الآن</h2>
-                <p class="text-sm text-gray-500 mt-2 font-medium">الكمية محدودة، اطلب قبل نفاذ المخزون</p>
-              </div>
-              
-              <!-- استدعاء فورم الدفع الأصلي بلا ما نمسو اللوجيك تاعو -->
-              <OrderForm
-                product={product}
-                content={content}
-                fieldErrors={fieldErrors}
-                serverError={serverError}
-                basePrice={basePrice}
-                defaultVariant={product?.variants?.[0] ?? null}
-                cur={cur}
-                isRTL={isRTL}
-                offers={product.offers}
-                isOutOfStock={isOutOfStock}
-                otpEnabled={config.otpEnabled === true}
-                turnstileEnabled={config.turnstileEnabled === true}
-                pages={config.pages ?? []}
-                formPolicy={config.checkoutForm}
-              />
-              
-              <!-- ضمانات تحت الفورم لطمأنة الزبون -->
-              <div class="mt-8 flex items-center justify-center gap-6 text-gray-400 border-t border-gray-50 pt-6">
-                <div class="flex flex-col items-center gap-1">
-                  <Icon name="heroicons:truck" class="w-6 h-6" />
-                  <span class="text-[10px] font-bold uppercase">توصيل سريع</span>
-                </div>
-                <div class="flex flex-col items-center gap-1">
-                  <Icon name="heroicons:banknotes" class="w-6 h-6" />
-                  <span class="text-[10px] font-bold uppercase">دفع عند الاستلام</span>
-                </div>
-                <div class="flex flex-col items-center gap-1">
-                  <Icon name="heroicons:arrow-path" class="w-6 h-6" />
-                  <span class="text-[10px] font-bold uppercase">استبدال مضمون</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-      </main>
+<StoreLayout
+  config={config}
+  content={content}
+  title={`Bracelet Metropole - عرض خاص`}
+  marketing={true}
+>
+  <div class="bg-gray-50 min-h-screen py-8" dir={isRTL ? "rtl" : "ltr"}>
+    
+    <!-- هيدر تعريفي خفيف للعرض -->
+    <div class="max-w-4xl mx-auto px-4 text-center mb-6">
+      <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">عرض حصري ومحدود</span>
+      <h1 class="text-3xl md:text-4xl font-black text-gray-900 mt-2">Bracelet Metropole</h1>
     </div>
-  )}
-  
-  {!product && (
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 text-center px-4">
-      <div class="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-md">
-        <Icon name="heroicons:exclamation-circle" class="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h2 class="text-2xl font-black text-gray-900 mb-2">عذراً، لم يتم العثور على المنتج.</h2>
-        <p class="text-gray-500 font-medium">تأكد من أن الرابط المدخل صحيح وموجود في قاعدة البيانات.</p>
-      </div>
-    </div>
-  )}
+
+    <!-- استدعاء مكون المنتج الأصلي مع تحديد الـ slug ديركت -->
+    <ProductDetailContent
+      slug="bracelet-metropole"
+      config={config}
+      content={content}
+      isRTL={isRTL}
+      fieldErrors={fieldErrors}
+      serverError={serverError}
+    />
+  </div>
 </StoreLayout>
 
-<!-- السكريبتات بالمسار الصحيح -->
+<!-- مسارات السكريبتات الصحيحة لمجلد src/pages -->
 <script src="../theme/scripts/product.ts"></script>
+<script src="../theme/scripts/sticky-cta.ts"></script>
 <script src="../theme/scripts/otp-step.ts"></script>
 <script src="../theme/scripts/turnstile-field.ts"></script>
+<script src="../theme/scripts/track-abandonment.ts"></script>
