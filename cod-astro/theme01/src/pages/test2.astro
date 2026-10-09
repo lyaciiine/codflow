@@ -1,0 +1,93 @@
+---
+import StoreLayout from "@/theme/layouts/StoreLayout.astro";
+import OrderForm from "@/theme/components/order/OrderForm.astro";
+import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
+import { getStoreContext } from "@/theme/config/store";
+import { fetchLandingPageBySlug } from "@/core/api/client";
+import { actions, isInputError } from "astro:actions";
+
+const storeCtx = await getStoreContext();
+const { config, content: copy, isRTL } = storeCtx;
+const lp = await fetchLandingPageBySlug("lacoste");
+const product = lp?.product;
+const cur = config.currencySymbol;
+const variant = product?.hasVariants ? (product.variants.find((v: any) => v.isDefault) ?? product.variants[0]) : null;
+const basePrice = variant?.price ?? product?.price ?? 0;
+const comparePrice = variant?.compareAtPrice ?? product?.compareAtPrice ?? null;
+const isOutOfStock = product?.trackInventory && product.inventory === 0;
+const result = Astro.getActionResult(actions.placeOrder);
+if (result?.data?.orderNumber) return Astro.redirect(`/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`, 303);
+const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
+const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
+const gallery: string[] = ((product as any)?.images ?? (lp as any)?.images ?? []).map((img: any) => typeof img === "string" ? img : (img?.url ?? img?.src ?? img?.image ?? null)).filter(Boolean);
+const hasDiscount = comparePrice && Number(comparePrice) > Number(basePrice);
+const discountPct = hasDiscount ? Math.round((Number(comparePrice) - Number(basePrice)) / Number(comparePrice) * 100) : 0;
+const details = [
+  { n:"01", title:"ستايل يجي معاك كل يوم", text:"سوار بتصميم مرتب يكمّل إطلالتك اليومية والمناسبات." },
+  { n:"02", title:"شوف التفاصيل قبل القرار", text:"تصفّح صور المنتج وتأكد من المواصفات والخيارات المتاحة." },
+  { n:"03", title:"طلب بسيط وواضح", text:"عمّر معلوماتك، نأكدوا معاك الطلب، والتوصيل حسب الخيارات المتوفرة." }
+];
+---
+<StoreLayout config={config} content={copy} title={lp?.metaTitle || product?.name || "سوار معدني"} marketing={true}>
+{product && <main class="lacoste" dir={isRTL ? "rtl" : "ltr"}>
+  <div id="page-data" class="sr-only"
+    data-variants={JSON.stringify(product.variants ?? [])} data-base-price={basePrice} data-compare-price={comparePrice ?? ""}
+    data-cur={cur} data-is-rtl={isRTL ? "1" : "0"} data-shipping-label={copy.shippingLabel}
+    data-shipping-calc={copy.shippingCalculated} data-shipping-free={copy.shippingFree} data-total-label={copy.totalLabel}
+    data-commune-placeholder={copy.formCommunePlaceholder} data-commune-loading={copy.formCommuneLoading}
+    data-commune-disabled={copy.formCommuneDisabled} data-offers={JSON.stringify(product.offers ?? [])}
+    data-track-inventory={product.trackInventory ? "1" : "0"} data-out-of-stock-label={copy.outOfStock}
+    data-qty-max-stock={copy.qtyMaxStock} data-inventory={String(product.inventory ?? 0)}
+    data-pixel-id={lp.tracking?.pixelId ?? config.pixelId ?? ""} data-phone-invalid={copy.formPhoneInvalid}
+    data-product-id={product.id} data-product-name={product.name} />
+  <ShippingIsland server:defer />
+  <div class="announcement"><span></span> تفاصيل مختارة. ستايل يبقى. <i>•</i> الدفع عند الاستلام حسب التوفر</div>
+  <section class="hero wrap">
+    <div class="hero-copy">
+      <p class="kicker">LACOSTE / ACCESSORIES</p>
+      <h1>تفصيل صغير.<br/><em>فرق كبير.</em></h1>
+      <p class="intro">سوار معدني يكمّل حضورك من غير مبالغة. اختار ستايلك وخلي التفاصيل تهدر.</p>
+      <div class="price"><strong>{basePrice} <small>{cur}</small></strong>{hasDiscount && <del>{comparePrice} {cur}</del>}{hasDiscount && <b>-{discountPct}%</b>}</div>
+      <a class="primary" href="#order-section-wrapper">اطلب السوار <span>↙</span></a>
+      <p class="micro">السعر والخيارات النهائية يبانوا في استمارة الطلب.</p>
+    </div>
+    <div class="product-stage">
+      <div class="stage-label"><span>PRODUCT STUDY</span><span>NO. 01</span></div>
+      {gallery[0] ? <img src={gallery[0]} alt={product.name} width="900" height="900" fetchpriority="high" loading="eager"/> : <div class="no-image">صورة المنتج غير متوفرة حالياً</div>}
+      <div class="stage-foot"><span>EVERYDAY SIGNATURE</span><span>L / EDITION</span></div><div class="seal">L<span>STYLE</span></div>
+    </div>
+  </section>
+  <section class="assurances"><div><b>↗</b><p><strong>سعر واضح</strong><small>قبل تأكيد الطلب</small></p></div><div><b>⌁</b><p><strong>تأكيد مباشر</strong><small>نتواصلوا معاك</small></p></div><div><b>＋</b><p><strong>تفاصيل التوصيل</strong><small>في الاستمارة</small></p></div></section>
+  <section class="manifesto wrap"><div><p class="kicker">LESS, BUT BETTER</p><h2>ستايل بسيط،<br/><em>حضور محسوب.</em></h2></div><p>الإكسسوار المليح ما يغطّيش على ستايلك؛ يكملو. شوف صور السوار والتفاصيل المتوفرة، وتأكد من المواصفات قبل ما تثبّت طلبك.</p></section>
+  {gallery.length > 1 && <section class="gallery wrap"><div class="section-top"><p class="kicker">UP CLOSE</p><h2>التفاصيل، من قريب.</h2></div><div class="gallery-grid">{gallery.slice(1,4).map((src,i)=><figure class:list={["gallery-item",i===1 && "gallery-tall"]}><img src={src} alt={`${product.name} — صورة ${i+2}`} loading="lazy" decoding="async"/><figcaption>DETAIL / 0{i+2}<span>↗</span></figcaption></figure>)}</div></section>}
+  <section class="details wrap"><div class="details-title"><p class="kicker">THE DETAILS</p><h2>اختار على<br/><em>بيّنة.</em></h2><p>راجع صور المنتج والسعر والخيارات المتاحة قبل تأكيد الطلب.</p></div><div class="detail-list">{details.map(d=><article><span>{d.n}</span><div><h3>{d.title}</h3><p>{d.text}</p></div><b>↗</b></article>)}</div></section>
+  <section class="order-band"><div class="wrap band-inner"><div><p class="kicker">MAKE IT YOURS</p><h2>جاهز تزيد<br/><em>التفصيل الأخير؟</em></h2><p>عمّر معلوماتك لتحت. تفاصيل الطلب والتوصيل تتأكد معاك.</p></div><div class="band-price"><small>السعر الحالي</small><strong>{basePrice} <small>{cur}</small></strong>{hasDiscount && <del>{comparePrice} {cur}</del>}<a href="#order-section-wrapper">نروح للطلب ↓</a></div></div></section>
+  <section class="checkout wrap" id="order-section-wrapper"><div class="checkout-title"><p class="kicker">SECURE YOUR ORDER</p><h2>كمّل طلبك.</h2><p>دخل معلومات صحيحة باش نقدروا نأكدوا معاك الطلب والتوصيل.</p></div><div class="form-card"><OrderForm product={product} content={copy} fieldErrors={fieldErrors} serverError={serverError} basePrice={basePrice} defaultVariant={variant ?? null} cur={cur} isRTL={isRTL} offers={product.offers} defaultVariantId={variant?.id ?? null} isOutOfStock={isOutOfStock} otpEnabled={config.otpEnabled === true} turnstileEnabled={config.turnstileEnabled === true} turnstileSiteKey={config.turnstileSiteKey ?? null} pages={config.pages ?? []} formPolicy={config.checkoutForm} landingPageSlug={lp.slug}/></div><p class="form-note">تأكد من رقم الهاتف والعنوان قبل إرسال الطلب.</p></section>
+  <footer class="footer wrap"><span class="logo">L<span>.</span></span><span>{product.name}</span><a href="#order-section-wrapper">للأعلى ↑</a></footer>
+  <div class="mobile-cta"><div><small>السعر الحالي</small><strong>{basePrice} {cur}</strong></div><a href="#order-section-wrapper">اطلب الآن <span>↙</span></a></div>
+</main>}
+{!product && <div class="empty" dir={isRTL ? "rtl" : "ltr"}><h1>المنتج غير متوفر حالياً</h1><p>راجع صفحة الهبوط بالـ slug lacoste وإعدادات المنتج.</p></div>}
+</StoreLayout>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+:global(html){scroll-behavior:smooth;scroll-padding-top:22px}
+.lacoste{--ink:#17251c;--green:#315a43;--muted:#68746a;--paper:#f3f3ed;--line:#d9ded5;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;padding-bottom:86px;overflow:hidden}
+.wrap{width:min(1160px,calc(100% - 48px));margin-inline:auto}.announcement{background:#233c2e;color:#f4f4ed;min-height:40px;display:flex;justify-content:center;align-items:center;gap:10px;padding:9px 14px;font-size:10px;letter-spacing:.05em;text-align:center}.announcement span{width:6px;height:6px;border-radius:50%;background:#c8d7b8}.announcement i{font-style:normal;opacity:.5}
+.kicker{font-size:10px;letter-spacing:.17em;font-weight:700;color:var(--green);margin:0 0 24px}h1,h2,h3,p,figure{margin-top:0}.hero{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(35px,7vw,100px);align-items:center;padding-block:clamp(48px,8vw,108px) 75px}.hero h1,.manifesto h2,.details-title h2,.order-band h2{font:600 clamp(45px,6vw,78px)/1.02 'Manrope',sans-serif;letter-spacing:-.065em;margin:0 0 25px}.hero h1 em,h2 em{font-family:Georgia,serif;font-weight:400;color:var(--green);letter-spacing:-.055em}.intro{max-width:390px;color:var(--muted);font-size:15px;line-height:1.95;margin-bottom:28px}.price{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:24px}.price strong,.band-price strong{font-size:32px;letter-spacing:-.04em}.price small,.band-price strong small{font-size:13px;font-weight:500}.price del,.band-price del{font-size:13px;color:#89938a}.price b{font-size:10px;background:#dce6d5;color:#315a43;padding:6px 8px}.primary{display:flex;align-items:center;justify-content:space-between;gap:38px;max-width:270px;min-height:54px;padding:0 20px;background:#233c2e;color:white;text-decoration:none;font-size:13px;font-weight:700;transition:background .2s,transform .2s}.primary:hover{background:#315a43;transform:translateY(-2px)}.micro{font-size:10px;color:#788278;margin-top:17px}.product-stage{position:relative;background:#e3e7dc;padding:clamp(20px,4vw,48px)}.product-stage:before{content:"";position:absolute;inset:13px;border:1px solid #315a4326;pointer-events:none}.stage-label,.stage-foot{position:relative;display:flex;justify-content:space-between;color:#647265;font-size:9px;letter-spacing:.14em}.product-stage img{position:relative;display:block;width:100%;aspect-ratio:1;object-fit:contain;mix-blend-mode:multiply}.stage-foot{border-top:1px solid #c8d1c5;padding-top:13px}.seal{position:absolute;right:-18px;bottom:52px;width:70px;height:70px;border-radius:50%;background:#315a43;color:#f3f3ed;display:grid;place-content:center;text-align:center;font:28px Georgia,serif;box-shadow:0 10px 25px #1d35241f}.seal span{font:7px 'DM Sans',sans-serif;letter-spacing:.15em;margin-top:7px}.no-image{aspect-ratio:1;display:grid;place-content:center;color:var(--muted);font-size:12px}
+.assurances{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:26px max(24px,calc((100% - 1080px)/2));background:#eceee7;border-block:1px solid var(--line)}.assurances>div{display:flex;align-items:center;justify-content:center;gap:12px}.assurances b{font:26px Georgia,serif;color:var(--green)}.assurances p{margin:0;display:grid;gap:5px}.assurances strong{font-size:12px}.assurances small{font-size:10px;color:var(--muted)}
+.manifesto{display:grid;grid-template-columns:1fr .7fr;gap:70px;align-items:end;padding-block:clamp(78px,11vw,145px)}.manifesto h2,.details-title h2{font-size:clamp(42px,5vw,66px);margin:0}.manifesto>p{max-width:390px;color:var(--muted);line-height:2;font-size:14px;margin:0 0 7px}.gallery{padding-bottom:clamp(80px,10vw,130px)}.section-top{margin-bottom:28px}.section-top .kicker{margin-bottom:15px}.section-top h2{font:600 clamp(30px,4vw,46px)/1.1 'Manrope',sans-serif;letter-spacing:-.05em;margin:0}.gallery-grid{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:14px;align-items:start}.gallery-item{margin:0;background:#e3e7dc;padding:12px}.gallery-tall{margin-top:42px}.gallery-item img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;mix-blend-mode:multiply}.gallery-item figcaption{display:flex;justify-content:space-between;padding:13px 3px 3px;color:#68746a;font-size:9px;letter-spacing:.12em}
+.details{display:grid;grid-template-columns:.75fr 1.25fr;gap:clamp(40px,8vw,120px);padding-bottom:clamp(90px,12vw,150px)}.details-title>p:last-child{max-width:290px;color:var(--muted);font-size:13px;line-height:1.9;margin-top:25px}.detail-list article{display:grid;grid-template-columns:35px 1fr 20px;gap:18px;border-top:1px solid var(--line);padding:24px 0}.detail-list article>span{font-size:10px;color:#78917c;padding-top:4px}.detail-list h3{font-size:16px;margin:0 0 8px}.detail-list p{font-size:12px;color:var(--muted);line-height:1.9;margin:0}.detail-list article>b{font-weight:400;color:var(--green)}
+.order-band{background:#233c2e;color:#f3f3ed;padding-block:clamp(55px,8vw,95px)}.band-inner{display:flex;align-items:end;justify-content:space-between;gap:40px}.order-band .kicker{color:#c1d0ba}.order-band h2{font-size:clamp(42px,5vw,66px);margin:0}.order-band h2 em{color:#c6d7b8}.order-band .band-inner>div:first-child>p:last-child{color:#d0d9ce;max-width:420px;font-size:13px;line-height:1.9;margin:22px 0 0}.band-price{min-width:200px;border:1px solid #ffffff40;padding:23px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}.band-price>small{font-size:10px;color:#c8d4c7}.band-price strong{font-size:34px}.band-price a{border-top:1px solid #ffffff45;padding-top:15px;margin-top:10px;width:100%;color:white;text-decoration:none;font-size:12px}
+.checkout{display:grid;grid-template-columns:.7fr 1.3fr;gap:45px;padding-block:clamp(70px,9vw,110px) 25px;align-items:start}.checkout-title{position:sticky;top:30px}.checkout-title h2{font:600 clamp(38px,4vw,54px)/1.1 'Manrope',sans-serif;letter-spacing:-.06em;margin:0 0 15px}.checkout-title>p:last-child,.form-note{font-size:12px;color:var(--muted);line-height:1.9}.form-card{background:white;border:1px solid #dfe3dc;padding:clamp(18px,3vw,32px);box-shadow:0 16px 50px #263a2c0b}.form-note{grid-column:2;margin:0;font-size:10px}.footer{border-top:1px solid var(--line);margin-top:55px;padding-top:23px;display:flex;align-items:center;gap:20px;color:var(--muted);font-size:10px}.logo{font:28px Georgia,serif;color:var(--green)}.logo span{color:#a0b59a}.footer a{margin-inline-start:auto;color:inherit;text-decoration:none}.mobile-cta{display:none}.empty{padding:90px 24px;text-align:center;background:#f3f3ed;color:#17251c}
+@media(max-width:760px){.lacoste{padding-bottom:105px}.wrap{width:calc(100% - 36px)}.announcement{font-size:9px;gap:7px}.hero{grid-template-columns:1fr;gap:30px;padding-block:42px 48px}.hero-art{padding:21px}.hero-art:before{inset:9px}.product-stage img{max-height:390px}.seal{width:60px;height:60px;right:-10px;bottom:48px;font-size:23px}.hero h1{font-size:clamp(48px,13vw,68px)}.intro{font-size:14px}.assurances{padding:20px 12px;gap:8px}.assurances>div{flex-direction:column;text-align:center;gap:6px}.assurances b{font-size:22px}.assurances strong{font-size:10px}.assurances small{font-size:9px;line-height:1.5}.manifesto{grid-template-columns:1fr;gap:27px;padding-block:75px}.gallery-grid{grid-template-columns:1fr 1fr;gap:10px}.gallery-item{padding:8px}.gallery-tall{margin-top:24px}.gallery-item:last-child{display:none}.details{grid-template-columns:1fr;gap:27px;padding-bottom:80px}.details-title>p:last-child{max-width:390px}.band-inner{align-items:stretch;flex-direction:column;gap:28px}.band-price{min-width:0}.checkout{grid-template-columns:1fr;gap:22px;padding-top:65px}.checkout-title{position:static}.form-note{grid-column:1}.footer{margin-top:40px}.mobile-cta{position:fixed;z-index:40;inset-inline:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px max(11px,env(safe-area-inset-bottom));background:#f7f7f1f2;border-top:1px solid #d9ded5;backdrop-filter:blur(14px);transition:transform .25s}.mobile-cta>div{display:grid;gap:3px}.mobile-cta small{font-size:9px;color:var(--muted)}.mobile-cta strong{font-size:17px}.mobile-cta a{display:flex;align-items:center;justify-content:space-between;gap:24px;background:#233c2e;color:white;text-decoration:none;padding:14px 17px;font-size:12px;font-weight:700;min-height:46px}.mobile-cta.is-hidden{transform:translateY(110%)}}
+@media(prefers-reduced-motion:reduce){:global(html){scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+</style>
+<script src="../theme/scripts/product.ts"></script>
+<script src="../theme/scripts/otp-step.ts"></script>
+<script src="../theme/scripts/turnstile-field.ts"></script>
+<script src="../theme/scripts/track-abandonment.ts"></script>
+<script>
+const cta=document.querySelector<HTMLElement>(".mobile-cta");
+const order=document.getElementById("order-section-wrapper");
+if(cta&&order&&"IntersectionObserver" in window){new IntersectionObserver(([entry])=>cta.classList.toggle("is-hidden",entry.isIntersecting),{threshold:.12}).observe(order)}
+</script>
