@@ -1,0 +1,246 @@
+---
+import StoreLayout from "@/theme/layouts/StoreLayout.astro";
+import OrderForm from "@/theme/components/order/OrderForm.astro";
+import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
+import { getStoreContext } from "@/theme/config/store";
+import { fetchLandingPageBySlug } from "@/core/api/client";
+import { actions } from "astro:actions";
+import { isInputError } from "astro:actions";
+
+const storeCtx = await getStoreContext();
+const { config, content, isRTL } = storeCtx;
+
+// استدعاء صفحة الهبوط بالـ Slug الصحيح (مثلاً: lacoste أو اسم صفحة الهبوط اللي راك دايرها في الداشبورد)
+const lp = await fetchLandingPageBySlug("lacoste"); 
+const product = lp?.product;
+
+const cur = config.currencySymbol;
+const defaultVariant = product?.hasVariants
+  ? (product.variants.find((v: any) => v.isDefault) ?? product.variants[0])
+  : null;
+const basePrice = defaultVariant?.price ?? product?.price ?? 0;
+const comparePrice = defaultVariant?.compareAtPrice ?? product?.compareAtPrice ?? null;
+const isOutOfStock = product?.trackInventory && product.inventory === 0;
+const defaultVariantId = defaultVariant?.id ?? null;
+
+// --- PRESENTATIONAL VARIABLES ADDED FOR CRO (Safe & Optional Chaining) ---
+const images = product?.images ?? lp?.images ?? [];
+const extractImage = (img: any) => typeof img === 'string' ? img : (img?.url ?? img?.src ?? img?.image ?? "https://placehold.co/600x600/f8fafc/334155?text=صورة+المنتج");
+const mainImage = images?.length ? extractImage(images[0]) : "https://placehold.co/600x600/f8fafc/334155?text=صورة+المنتج";
+const galleryImages = images?.slice(1, 4) ?? [];
+
+const discountPercentage = basePrice && comparePrice && comparePrice > basePrice 
+  ? Math.round(((comparePrice - basePrice) / comparePrice) * 100) 
+  : 0;
+
+const features = [
+  { icon: "🚚", title: "توصيل سريع", desc: "لباب الدار في جميع الولايات" },
+  { icon: "🤝", title: "الدفع عند الاستلام", desc: "ما تخلص والو حتى تلحقك السلعة وتشوفها" },
+  { icon: "⭐", title: "ضمان الجودة", desc: "منتج أصلي ومضمون 100%" }
+];
+// ------------------------------------------------------------------------
+
+// معالجة إرسال الطلبية
+const result = Astro.getActionResult(actions.placeOrder);
+if (result?.data?.orderNumber) {
+  return Astro.redirect(
+    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
+    303,
+  );
+}
+const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
+const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
+---
+
+<StoreLayout config={config} content={content} title={lp?.metaTitle || "عرض خاص"} marketing={true}>
+  {product && (
+    <div class="bg-gray-50 min-h-screen pb-28 lg:pb-16 font-sans selection:bg-emerald-200" dir={isRTL ? "rtl" : "ltr"}>
+      
+      <!-- Promo Bar -->
+      <div class="bg-red-600 text-white text-center py-2 text-sm font-bold tracking-wide animate-pulse">
+        🔥 عرض خاص لفترة محدودة - الدفع عند الاستلام 🔥
+      </div>
+
+      <!-- جسر البيانات اللازم للسكريبتات والولايات -->
+      <div
+        id="page-data"
+        class="sr-only"
+        data-variants={JSON.stringify(product?.variants ?? [])}
+        data-base-price={basePrice}
+        data-compare-price={comparePrice ?? ""}
+        data-cur={cur}
+        data-is-rtl={isRTL ? "1" : "0"}
+        data-shipping-label={content?.shippingLabel}
+        data-shipping-calc={content?.shippingCalculated}
+        data-shipping-free={content?.shippingFree}
+        data-total-label={content?.totalLabel}
+        data-commune-placeholder={content?.formCommunePlaceholder}
+        data-commune-loading={content?.formCommuneLoading}
+        data-commune-disabled={content?.formCommuneDisabled}
+        data-offers={JSON.stringify(product?.offers ?? [])}
+        data-track-inventory={product?.trackInventory ? "1" : "0"}
+        data-out-of-stock-label={content?.outOfStock}
+        data-qty-max-stock={content?.qtyMaxStock}
+        data-inventory={String(product?.inventory ?? 0)}
+        data-pixel-id={lp?.tracking?.pixelId ?? config?.pixelId ?? ""}
+        data-phone-invalid={content?.formPhoneInvalid}
+        data-product-id={product?.id}
+        data-product-name={product?.name}
+      />
+
+      <ShippingIsland server:defer />
+
+      <main class="max-w-4xl mx-auto pt-6 px-4">
+        <!-- Hero Section -->
+        <section class="flex flex-col lg:flex-row gap-8 items-start mb-12">
+          
+          <!-- Image Gallery -->
+          <div class="w-full lg:w-1/2 flex flex-col gap-3">
+            <div class="relative rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-white aspect-square flex items-center justify-center">
+              <img src={mainImage} alt={product?.name || "المنتج"} class="object-cover w-full h-full" loading="eager" />
+              {discountPercentage > 0 && (
+                <div class="absolute top-4 right-4 bg-red-600 text-white px-3 py-1.5 rounded-full font-bold text-sm shadow-md">
+                  -{discountPercentage}% تخفيض
+                </div>
+              )}
+            </div>
+            {galleryImages?.length > 0 && (
+              <div class="grid grid-cols-3 gap-3">
+                {galleryImages.map((img: any) => (
+                  <div class="rounded-xl overflow-hidden border border-gray-200 aspect-square bg-white">
+                    <img src={extractImage(img)} alt="تفاصيل المنتج" class="object-cover w-full h-full opacity-80 hover:opacity-100 transition" loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <!-- Product Info & CTA -->
+          <div class="w-full lg:w-1/2 flex flex-col pt-2 lg:pt-6">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="flex text-amber-400 text-lg">⭐⭐⭐⭐⭐</span>
+              <span class="text-gray-500 text-sm font-medium">(أكثر من 1500 زبون راضي)</span>
+            </div>
+            
+            <h1 class="text-3xl lg:text-4xl font-black text-gray-900 mb-4 leading-tight">
+              {product?.name || "أحصل على الجودة لي تستاهلها مع هذا المنتج الرائع"}
+            </h1>
+            
+            <p class="text-gray-600 text-lg mb-6 leading-relaxed">
+              {product?.description || "المنتج الأكثر طلبا في الجزائر حالياً! أطلبه درك قبل ما تخلاص الكمية واستفد من التخفيض الحصري."}
+            </p>
+
+            <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-8 flex flex-col gap-1 relative overflow-hidden">
+              <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-100 rounded-full blur-xl opacity-60"></div>
+              <span class="text-emerald-800 font-semibold text-sm mb-1">السعر الحالي:</span>
+              <div class="flex items-end gap-3">
+                <span class="text-4xl font-black text-emerald-600">{basePrice} {cur}</span>
+                {comparePrice && comparePrice > basePrice && (
+                  <span class="text-lg text-gray-400 line-through mb-1">{comparePrice} {cur}</span>
+                )}
+              </div>
+            </div>
+
+            <a href="#order-section-wrapper" class="w-full bg-red-600 hover:bg-red-700 text-white text-center py-4 rounded-xl font-bold text-xl shadow-lg shadow-red-600/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
+              <span>أطلب الآن - الدفع عند الاستلام</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+            </a>
+          </div>
+        </section>
+
+        <!-- Features/Trust Section -->
+        <section class="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-100 mb-12">
+          <h2 class="text-2xl font-bold text-center text-gray-900 mb-8">علاه تشري من عندنا؟</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {features.map(f => (
+              <div class="flex flex-col items-center text-center p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-emerald-200 transition-colors">
+                <div class="text-4xl mb-3">{f.icon}</div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">{f.title}</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <!-- How it works -->
+        <section class="mb-12">
+          <div class="flex flex-col items-center text-center mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">طريقة الطلب ساهلة ماهلة!</h2>
+            <div class="w-16 h-1 bg-emerald-500 rounded-full"></div>
+          </div>
+          <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 max-w-2xl mx-auto text-gray-700 font-medium">
+            <div class="flex items-center gap-3 bg-white px-5 py-3 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto">
+              <span class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center font-bold">1</span>
+              <span>عمر الاستمارة لتحت</span>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300 hidden md:block rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <div class="flex items-center gap-3 bg-white px-5 py-3 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto">
+              <span class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center font-bold">2</span>
+              <span>نعيطولك نأكدو الطلبية</span>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300 hidden md:block rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            <div class="flex items-center gap-3 bg-white px-5 py-3 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto">
+              <span class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center font-bold">3</span>
+              <span>تستلم السلعة وتخلص</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 📦 فورمولار الدفع -->
+        <div class="max-w-xl mx-auto px-2" id="order-section-wrapper">
+          <div class="text-center mb-6">
+            <h2 class="text-3xl font-black text-gray-900 mb-2">أدخل معلوماتك للطلب</h2>
+            <p class="text-gray-500">الكمية المتبقية محدودة جداً، سارع بالطلب قبل نفاذ المخزون!</p>
+          </div>
+          <div class="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 md:p-8 border border-gray-100 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+            
+            <OrderForm
+              product={product}
+              content={content}
+              fieldErrors={fieldErrors}
+              serverError={serverError}
+              basePrice={basePrice}
+              defaultVariant={defaultVariant ?? null}
+              cur={cur}
+              isRTL={isRTL}
+              offers={product?.offers}
+              defaultVariantId={defaultVariantId}
+              isOutOfStock={isOutOfStock}
+              otpEnabled={config?.otpEnabled === true}
+              turnstileEnabled={config?.turnstileEnabled === true}
+              turnstileSiteKey={config?.turnstileSiteKey ?? null}
+              pages={config?.pages ?? []}
+              formPolicy={config?.checkoutForm}
+              landingPageSlug={lp?.slug}
+            />
+          </div>
+        </div>
+      </main>
+
+      <!-- Sticky Mobile CTA (Visible only on mobile devices) -->
+      <div class="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-200 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] z-50 lg:hidden">
+        <a href="#order-section-wrapper" class="w-full bg-red-600 hover:bg-red-700 text-white text-center py-3.5 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
+          <span>أطلب الآن - {basePrice} {cur}</span>
+        </a>
+      </div>
+
+    </div>
+  )}
+
+  {!product && (
+    <div class="flex flex-col items-center justify-center min-h-[60vh] py-24 px-6 text-center bg-gray-50">
+      <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        <h1 class="text-2xl font-black text-gray-900 mb-2">عذراً، المنتج غير متوفر</h1>
+        <p class="text-gray-500">لم يتم العثور على صفحة الهبوط أو أن الرابط غير صحيح.</p>
+      </div>
+    </div>
+  )}
+</StoreLayout>
+
+<!-- السكريبتات الأساسية -->
+<script src="../theme/scripts/product.ts"></script>
+<script src="../theme/scripts/otp-step.ts"></script>
+<script src="../theme/scripts/turnstile-field.ts"></script>
+<script src="../theme/scripts/track-abandonment.ts"></script>
