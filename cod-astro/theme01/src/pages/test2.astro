@@ -1,0 +1,581 @@
+---
+import StoreLayout from "@/theme/layouts/StoreLayout.astro";
+import OrderForm from "@/theme/components/order/OrderForm.astro";
+import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
+import { getStoreContext } from "@/theme/config/store";
+import { fetchLandingPageBySlug } from "@/core/api/client";
+import { actions } from "astro:actions";
+import { isInputError } from "astro:actions";
+
+const storeCtx = await getStoreContext();
+const { config, content, isRTL } = storeCtx;
+
+// استدعاء صفحة الهبوط بالـ Slug الصحيح (مثلاً: lacoste أو اسم صفحة الهبوط اللي راك دايرها في الداشبورد)
+const lp = await fetchLandingPageBySlug("lacoste"); 
+const product = lp?.product;
+
+const cur = config.currencySymbol;
+const defaultVariant = product?.hasVariants
+  ? (product.variants.find((v: any) => v.isDefault) ?? product.variants[0])
+  : null;
+const basePrice = defaultVariant?.price ?? product?.price ?? 0;
+const comparePrice = defaultVariant?.compareAtPrice ?? product?.compareAtPrice ?? null;
+const isOutOfStock = product?.trackInventory && product.inventory === 0;
+const defaultVariantId = defaultVariant?.id ?? null;
+
+// معالجة إرسال الطلبية
+const result = Astro.getActionResult(actions.placeOrder);
+if (result?.data?.orderNumber) {
+  return Astro.redirect(
+    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
+    303,
+  );
+}
+const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
+const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
+
+// متغيّرات عرض فقط: استخراج الصور بأمان من product.images أو lp.images.
+// إذا الصور ما بانوش، بدّل rawImageValue للحقل الصحيح اللي يرجعو الـ API.
+const resolveImage = (value: any): string | null => {
+  if (typeof value === "string" && value.trim().length > 0) return value;
+  if (value && typeof value === "object") {
+    const candidate = value?.url ?? value?.src ?? value?.image;
+    if (typeof candidate === "string" && candidate.trim().length > 0) return candidate;
+    if (candidate && typeof candidate === "object") {
+      const nested = candidate?.url ?? candidate?.src ?? candidate?.image;
+      if (typeof nested === "string" && nested.trim().length > 0) return nested;
+    }
+  }
+  return null;
+};
+const rawImageValue = product?.images ?? lp?.images ?? [];
+const imageEntries = Array.isArray(rawImageValue) ? rawImageValue : rawImageValue ? [rawImageValue] : [];
+const galleryImages = imageEntries
+  .map((entry: any) => resolveImage(entry))
+  .filter((src: any): src is string => typeof src === "string" && src.length > 0);
+const heroImage = galleryImages[0] ?? resolveImage(product?.image) ?? resolveImage(lp?.image);
+const storyImages = [galleryImages[0] ?? heroImage, galleryImages[1] ?? heroImage, galleryImages[2] ?? heroImage];
+
+const safeBasePrice = Number(basePrice ?? 0);
+const safeComparePrice = Number(comparePrice ?? 0);
+const discountPercent = safeBasePrice > 0 && safeComparePrice > safeBasePrice
+  ? Math.round(((safeComparePrice - safeBasePrice) / safeComparePrice) * 100)
+  : 0;
+const formatPrice = (value: any) => Number(value ?? 0).toLocaleString("ar-DZ", { maximumFractionDigits: 2 });
+
+// إذا عندك مزايا المنتج الحقيقية في الـ API، تتقرا منها؛ وإلا استعملنا مزايا الطلب والتوصيل المؤكدة.
+const rawFeatureValue = product?.features ?? lp?.features ?? [];
+const rawFeatureEntries = Array.isArray(rawFeatureValue)
+  ? rawFeatureValue
+  : typeof rawFeatureValue === "string"
+    ? rawFeatureValue.split(/[\n,؛•]/).map((item: string) => item.trim()).filter(Boolean)
+    : [];
+const resolvedFeatureNames = rawFeatureEntries
+  .map((item: any) => typeof item === "string" ? item : item?.title ?? item?.name ?? item?.text)
+  .filter((item: any): item is string => typeof item === "string" && item.trim().length > 0);
+const featureFallbacks = [
+  { title: "الدفع عند الاستلام", description: "تخلّص كي تستلم الطلبية.", icon: "wallet" },
+  { title: "توصيل لـ69 ولاية", description: "وصّل طلبك للولاية تاعك بكل سهولة.", icon: "truck" },
+  { title: "حساب التوصيل", description: "شوف تكلفة التوصيل قبل ما تأكّد الطلب.", icon: "calculator" },
+  { title: "طلب ساهل وواضح", description: "عمّر المعلومات اللازمة وكمل طلبك في خطوات بسيطة.", icon: "check" },
+];
+const featureCards = featureFallbacks.map((feature, index) => ({
+  ...feature,
+  title: resolvedFeatureNames[index] ?? feature.title,
+}));
+---
+
+<StoreLayout config={config} content={content} title={lp?.metaTitle || "عرض خاص"} marketing={true}>
+  {product && (
+    <div class="lp-page min-h-screen overflow-hidden bg-[#F6F9F7] pb-[calc(6.5rem+env(safe-area-inset-bottom))] text-[#153128] md:pb-16" dir={isRTL ? "rtl" : "ltr"}>
+      <!-- جسر البيانات اللازم للسكريبتات والولايات: خليه كما هو -->
+      <div
+        id="page-data"
+        class="sr-only"
+        data-variants={JSON.stringify(product.variants ?? [])}
+        data-base-price={basePrice}
+        data-compare-price={comparePrice ?? ""}
+        data-cur={cur}
+        data-is-rtl={isRTL ? "1" : "0"}
+        data-shipping-label={content.shippingLabel}
+        data-shipping-calc={content.shippingCalculated}
+        data-shipping-free={content.shippingFree}
+        data-total-label={content.totalLabel}
+        data-commune-placeholder={content.formCommunePlaceholder}
+        data-commune-loading={content.formCommuneLoading}
+        data-commune-disabled={content.formCommuneDisabled}
+        data-offers={JSON.stringify(product.offers ?? [])}
+        data-track-inventory={product.trackInventory ? "1" : "0"}
+        data-out-of-stock-label={content.outOfStock}
+        data-qty-max-stock={content.qtyMaxStock}
+        data-inventory={String(product.inventory ?? 0)}
+        data-pixel-id={lp.tracking?.pixelId ?? config.pixelId ?? ""}
+        data-phone-invalid={content.formPhoneInvalid}
+        data-product-id={product.id}
+        data-product-name={product.name}
+      />
+
+      <ShippingIsland server:defer />
+
+      <!-- شريط الإعلان -->
+      <div class="lp-announcement px-4 py-2.5 text-center text-xs font-bold text-white sm:text-sm">
+        <div class="mx-auto flex max-w-7xl items-center justify-center gap-2">
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 3.5 14.6 9l5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.8 1-5.8-4.3-4.1L9.4 9 12 3.5Z" stroke-linejoin="round" />
+          </svg>
+          <span>تقدر تطلب وأنت مرتاح: الدفع عند الاستلام والتوصيل لـ69 ولاية</span>
+        </div>
+      </div>
+
+      <!-- الواجهة الرئيسية -->
+      <section class="mx-auto max-w-7xl px-4 pb-10 pt-7 sm:px-6 sm:pb-14 sm:pt-10 lg:px-8 lg:pb-20 lg:pt-14" aria-labelledby="hero-title">
+        <div class="grid grid-cols-1 items-center gap-x-12 gap-y-6 lg:grid-cols-2 lg:gap-y-5">
+          <div class="lp-reveal lg:col-start-1 lg:row-start-1">
+            <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-[#C9DED3] bg-white/80 px-3.5 py-1.5 text-xs font-bold text-[#176044] sm:text-sm">
+              <span class="h-2 w-2 rounded-full bg-[#18845B]"></span>
+              <span>اختيارك، وطلبك يوصلك حتى لباب دارك</span>
+            </div>
+            <h1 id="hero-title" class="max-w-2xl text-3xl font-black leading-[1.35] tracking-[-0.035em] text-[#102B22] sm:text-4xl sm:leading-[1.3] lg:text-[3.35rem]">
+              خيّر اللي يناسبك، واطلبه <span class="text-[#16724F]">بلا تعقيد</span>
+            </h1>
+            <p class="mt-4 max-w-xl text-base leading-8 text-[#4F655C] sm:text-lg">
+              {product?.name ? `تعرّف على ${product.name} وخيّر العرض اللي يجيك مليح.` : "تعرّف على المنتج وخيّر العرض اللي يجيك مليح."}
+              كمّل معلوماتك، وخلي الباقي علينا.
+            </p>
+          </div>
+
+          <div class="lp-reveal relative lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            <div class="lp-hero-art relative mx-auto flex aspect-[5/4] w-full max-w-2xl items-center justify-center overflow-hidden rounded-[1.75rem] border border-[#D9E7DF] bg-[#E8F1EC] p-3 sm:rounded-[2.25rem] sm:p-5 lg:aspect-[0.95/1] lg:max-h-[600px]">
+              <div aria-hidden="true" class="lp-art-ring absolute -end-12 -top-12 h-44 w-44 rounded-full border border-[#BCD5C8] sm:h-60 sm:w-60"></div>
+              <div aria-hidden="true" class="absolute -bottom-16 -start-10 h-48 w-48 rounded-full bg-[#D8E9DF] sm:h-64 sm:w-64"></div>
+              {heroImage ? (
+                <img
+                  src={heroImage}
+                  alt={product?.name ?? "صورة المنتج"}
+                  class="relative z-10 h-full w-full rounded-[1.2rem] object-contain sm:rounded-[1.6rem]"
+                  loading="eager"
+                  fetchpriority="high"
+                  decoding="async"
+                />
+              ) : (
+                <div class="relative z-10 flex h-full w-full flex-col items-center justify-center rounded-[1.2rem] border border-dashed border-[#AFCBBC] bg-white/50 px-6 text-center sm:rounded-[1.6rem]">
+                  <svg aria-hidden="true" viewBox="0 0 64 64" class="mb-4 h-14 w-14 text-[#5A8872]" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="9" y="12" width="46" height="40" rx="5" />
+                    <circle cx="23" cy="25" r="4" />
+                    <path d="m13 46 13-12 8 7 7-6 10 11" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <p class="max-w-xs text-sm font-semibold leading-7 text-[#466355]">صورة المنتج ما راهيش متوفرة حالياً. راجع حقل الصور في بيانات المنتج.</p>
+                </div>
+              )}
+              <div class="absolute bottom-4 start-4 z-20 inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-xs font-extrabold text-[#176044] shadow-[0_8px_22px_-12px_rgba(18,56,39,0.35)] sm:bottom-6 sm:start-6 sm:px-4 sm:py-2.5 sm:text-sm">
+                <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M3.5 7.5h17v12h-17zM7 7.5V5.8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.7M3.5 12h17M9 12v2h6v-2" stroke-linejoin="round" />
+                </svg>
+                <span>الدفع عند الاستلام</span>
+              </div>
+              {discountPercent > 0 && (
+                <div class="absolute end-4 top-4 z-20 flex h-[4.4rem] w-[4.4rem] flex-col items-center justify-center rounded-full bg-[#176044] text-white shadow-[0_10px_24px_-12px_rgba(18,56,39,0.55)] sm:end-6 sm:top-6 sm:h-20 sm:w-20">
+                  <span class="text-lg font-black leading-none sm:text-xl">-{discountPercent}%</span>
+                  <span class="mt-1 text-[10px] font-bold sm:text-xs">تخفيض</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div class="lp-reveal lg:col-start-1 lg:row-start-2">
+            <div class="flex flex-wrap items-end gap-x-3 gap-y-1">
+              <p class="text-3xl font-black tracking-tight text-[#123A2B] sm:text-4xl">
+                <span>{formatPrice(basePrice)}</span>
+                <span class="ms-1 text-base font-bold text-[#426255] sm:text-lg">{cur}</span>
+              </p>
+              {discountPercent > 0 && (
+                <p class="pb-1 text-base font-semibold text-[#829188] line-through decoration-1 sm:text-lg">
+                  {formatPrice(comparePrice)} <span>{cur}</span>
+                </p>
+              )}
+            </div>
+            <p class="mt-2 text-sm leading-6 text-[#60756A]">السعر النهائي ومصاريف التوصيل يبانولك قبل تأكيد الطلب.</p>
+            <a href="#order-section-wrapper" class="lp-cta lp-cta-pulse mt-5 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#176044] px-6 py-4 text-base font-extrabold text-white shadow-[0_12px_24px_-12px_rgba(17,91,60,0.6)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#104C35] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#6BBF94] active:translate-y-0 sm:w-auto sm:min-w-64">
+              <span>اطلب الآن</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </a>
+            <p class="mt-3 flex items-center gap-2 text-xs font-semibold text-[#668073]">
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 3 19 6v5c0 4.6-3 7.6-7 10-4-2.4-7-5.4-7-10V6l7-3Z" stroke-linejoin="round" />
+                <path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>ما تخلّص والو حتى تستلم طلبك</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- نقاط الثقة -->
+      <section class="border-y border-[#E0EAE4] bg-white px-4 py-5 sm:px-6 sm:py-6 lg:px-8" aria-label="معلومات الطلب والتوصيل">
+        <div class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+          <div class="flex items-center justify-center gap-3 py-1 sm:justify-start">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF4EE] text-[#176044]">
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></svg>
+            </span>
+            <div><p class="font-extrabold text-[#183A2C]">الدفع عند الاستلام</p><p class="mt-0.5 text-xs text-[#687C71]">خلّص كي توصلك الطلبية</p></div>
+          </div>
+          <div class="flex items-center justify-center gap-3 border-y border-[#E8EFEA] py-4 sm:justify-start sm:border-y-0 sm:border-s sm:py-1 sm:ps-5">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF4EE] text-[#176044]">
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/><circle cx="7.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
+            </span>
+            <div><p class="font-extrabold text-[#183A2C]">توصيل لـ69 ولاية</p><p class="mt-0.5 text-xs text-[#687C71]">اختار ولايتك وبلديتك</p></div>
+          </div>
+          <div class="flex items-center justify-center gap-3 py-1 sm:justify-start sm:border-s sm:ps-5">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF4EE] text-[#176044]">
+              <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>
+            </span>
+            <div><p class="font-extrabold text-[#183A2C]">طلب في دقائق</p><p class="mt-0.5 text-xs text-[#687C71]">معلومات واضحة وخطوات بسيطة</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- المزايا -->
+      <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20" aria-labelledby="features-title">
+        <div class="lp-reveal mx-auto mb-8 max-w-2xl text-center sm:mb-10">
+          <h2 id="features-title" class="text-2xl font-black tracking-[-0.025em] text-[#14382A] sm:text-3xl">كلش واضح من البداية</h2>
+          <p class="mt-3 text-sm leading-7 text-[#62766B] sm:text-base">المعلومات المهمة قدّامك، باش تختار وتطلب وأنت فاهم كل خطوة.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          {featureCards.map((feature, index) => (
+            <article class={`lp-reveal lp-feature lp-feature-${index + 1} rounded-2xl border border-[#DFEAE3] bg-white p-5 sm:p-6`}>
+              <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF4EE] text-[#176044]">
+                {feature.icon === "wallet" && <svg aria-hidden="true" viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M15 14h2"/><path d="M6 5V4h12v1"/></svg>}
+                {feature.icon === "truck" && <svg aria-hidden="true" viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h12v10h-12zM14.5 10h4l3 3v3.5h-7z"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="18" cy="18" r="1.8"/></svg>}
+                {feature.icon === "calculator" && <svg aria-hidden="true" viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.8" width="14" height="18.4" rx="2"/><path d="M8 6.5h8v3H8zM8 13h1m3 0h1m3 0h1M8 17h1m3 0h1m3 0h1"/></svg>}
+                {feature.icon === "check" && <svg aria-hidden="true" viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 19 6v5c0 4.4-3 7.4-7 10-4-2.6-7-5.6-7-10V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg>}
+              </div>
+              <h3 class="text-lg font-extrabold text-[#183A2C]">{feature.title}</h3>
+              <p class="mt-2 text-sm leading-7 text-[#64796E]">{feature.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <!-- صور وتفاصيل المنتج: صور إضافية تتقرا بأمان، ومع غيابها تبقى الواجهة مفهومة -->
+      <section class="lp-story-wrap border-y border-[#E1EAE4] bg-white" aria-labelledby="story-title">
+        <div class="mx-auto max-w-7xl px-4 pb-3 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-20">
+          <div class="lp-reveal mb-8 max-w-2xl sm:mb-10">
+            <h2 id="story-title" class="text-2xl font-black tracking-[-0.025em] text-[#14382A] sm:text-3xl">شوف التفاصيل، وخيّر على راحتك</h2>
+            <p class="mt-3 text-sm leading-7 text-[#62766B] sm:text-base">خُذ وقتك في معاينة الصور والمعلومات قبل ما تكمل الطلب.</p>
+          </div>
+
+          <div class="space-y-8 pb-12 sm:space-y-12 sm:pb-16 lg:space-y-16 lg:pb-20">
+            {[
+              { title: "تعرّف على المنتج", text: "شوف الصورة والتفاصيل المتوفرة، وقارنها مع واش تحتاج.", image: storyImages[0], alt: "معاينة المنتج" },
+              { title: "اختار العرض المناسب", text: "إذا كانت كاينة مقاسات أو خيارات، اختار اللي يناسبك في فورمولار الطلب.", image: storyImages[1], alt: "تفاصيل واختيارات المنتج" },
+              { title: "كمّل طلبك بثقة", text: "دخل معلومات التوصيل تاعك، وراجع السعر ومصاريف التوصيل قبل التأكيد.", image: storyImages[2], alt: "المنتج قبل إتمام الطلب" },
+            ].map((story, index) => (
+              <article class={`lp-reveal grid grid-cols-1 items-center gap-6 sm:gap-8 md:grid-cols-2 md:gap-12 ${index % 2 === 1 ? "md:[&>div:first-child]:order-2" : ""}`}>
+                <div class="relative overflow-hidden rounded-[1.5rem] border border-[#DFEAE3] bg-[#EAF3ED] p-3 sm:rounded-[2rem] sm:p-4">
+                  {story.image ? (
+                    <img src={story.image} alt={story.alt} class="aspect-[5/4] w-full rounded-[1.1rem] object-contain sm:rounded-[1.5rem]" loading="lazy" decoding="async" />
+                  ) : (
+                    <div class="flex aspect-[5/4] w-full flex-col items-center justify-center rounded-[1.1rem] border border-dashed border-[#B8D0C1] bg-white/50 px-6 text-center sm:rounded-[1.5rem]">
+                      <svg aria-hidden="true" viewBox="0 0 64 64" class="mb-3 h-12 w-12 text-[#5A8872]" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="12" width="46" height="40" rx="5"/><circle cx="23" cy="25" r="4"/><path d="m13 46 13-12 8 7 7-6 10 11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      <p class="text-sm font-semibold text-[#466355]">زيد صور المنتج في بيانات الصفحة باش تظهر المعاينة هنا.</p>
+                    </div>
+                  )}
+                </div>
+                <div class="max-w-lg py-1 md:py-5">
+                  <span class="mb-4 inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-[#EAF4EE] px-3 text-sm font-black text-[#176044]">{index + 1}</span>
+                  <h3 class="text-xl font-black leading-snug text-[#15392A] sm:text-2xl">{story.title}</h3>
+                  <p class="mt-3 text-sm leading-8 text-[#63776C] sm:text-base">{story.text}</p>
+                  {index === 0 && <p class="mt-4 text-sm font-bold text-[#176044]">{product?.name ?? "المنتج"}</p>}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- كيفاش تطلب -->
+      <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20" aria-labelledby="steps-title">
+        <div class="lp-reveal mx-auto mb-9 max-w-2xl text-center sm:mb-11">
+          <h2 id="steps-title" class="text-2xl font-black tracking-[-0.025em] text-[#14382A] sm:text-3xl">ثلاث خطوات وتكون كملت</h2>
+          <p class="mt-3 text-sm leading-7 text-[#62766B] sm:text-base">ما تحتاجش تعقّدها على روحك.</p>
+        </div>
+        <div class="relative grid grid-cols-1 gap-7 sm:grid-cols-3 sm:gap-5">
+          <div aria-hidden="true" class="lp-step-line absolute start-[16.66%] end-[16.66%] top-6 hidden border-t border-dashed border-[#B9D3C4] sm:block"></div>
+          <article class="lp-reveal relative text-center">
+            <div class="relative z-10 mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#CFE1D6] bg-white text-base font-black text-[#176044] shadow-[0_5px_16px_-10px_rgba(19,65,43,0.35)]">1</div>
+            <h3 class="mt-4 text-base font-extrabold text-[#183A2C]">عمّر معلوماتك</h3>
+            <p class="mx-auto mt-2 max-w-xs text-sm leading-7 text-[#687C71]">الاسم، رقم الهاتف، والعنوان تاع التوصيل.</p>
+          </article>
+          <article class="lp-reveal relative text-center">
+            <div class="relative z-10 mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#CFE1D6] bg-white text-base font-black text-[#176044] shadow-[0_5px_16px_-10px_rgba(19,65,43,0.35)]">2</div>
+            <h3 class="mt-4 text-base font-extrabold text-[#183A2C]">راجع الطلب</h3>
+            <p class="mx-auto mt-2 max-w-xs text-sm leading-7 text-[#687C71]">تأكد من الخيارات والسعر ومصاريف التوصيل.</p>
+          </article>
+          <article class="lp-reveal relative text-center">
+            <div class="relative z-10 mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#CFE1D6] bg-white text-base font-black text-[#176044] shadow-[0_5px_16px_-10px_rgba(19,65,43,0.35)]">3</div>
+            <h3 class="mt-4 text-base font-extrabold text-[#183A2C]">خلّص كي توصلك</h3>
+            <p class="mx-auto mt-2 max-w-xs text-sm leading-7 text-[#687C71]">الدفع يكون عند الاستلام، حسب تفاصيل طلبك.</p>
+          </article>
+        </div>
+        <div class="lp-reveal mt-9 text-center">
+          <a href="#order-section-wrapper" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#BFD7C9] bg-white px-5 py-3 text-sm font-extrabold text-[#176044] transition hover:border-[#176044] hover:bg-[#F0F7F2] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-3 focus-visible:outline-[#6BBF94]">
+            <span>نروح للفورمولار</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </section>
+
+      <!-- عنوان الفورمولار -->
+      <section class="px-4 pb-6 pt-2 text-center sm:px-6 sm:pb-8" aria-labelledby="order-title">
+        <div class="lp-reveal mx-auto max-w-2xl">
+          <h2 id="order-title" class="text-2xl font-black tracking-[-0.025em] text-[#14382A] sm:text-3xl">كمّل طلبك من هنا</h2>
+          <p class="mt-3 text-sm leading-7 text-[#62766B] sm:text-base">عمّر المعلومات الصحيحة باش يوصلك الطلب بلا مشاكل.</p>
+        </div>
+      </section>
+
+      <!-- الفورمولار الأصلي: نفس الـ id ونفس props -->
+      <div class="mx-auto max-w-xl px-4" id="order-section-wrapper">
+        <div class="rounded-2xl border border-[#E0EAE3] bg-white p-4 shadow-[0_18px_44px_-28px_rgba(17,60,40,0.32)] sm:rounded-3xl sm:p-7">
+          <OrderForm
+            product={product}
+            content={content}
+            fieldErrors={fieldErrors}
+            serverError={serverError}
+            basePrice={basePrice}
+            defaultVariant={defaultVariant ?? null}
+            cur={cur}
+            isRTL={isRTL}
+            offers={product.offers}
+            defaultVariantId={defaultVariantId}
+            isOutOfStock={isOutOfStock}
+            otpEnabled={config.otpEnabled === true}
+            turnstileEnabled={config.turnstileEnabled === true}
+            turnstileSiteKey={config.turnstileSiteKey ?? null}
+            pages={config.pages ?? []}
+            formPolicy={config.checkoutForm}
+            landingPageSlug={lp.slug}
+          />
+        </div>
+        <div class="lp-reveal mt-4 grid grid-cols-1 gap-2.5 pb-4 text-center sm:grid-cols-3 sm:gap-3 sm:pb-0">
+          <div class="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-3 text-xs font-bold text-[#4F6C5D]">
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-[#176044]" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 19 6v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg>
+            <span>راجع معلوماتك قبل التأكيد</span>
+          </div>
+          <div class="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-3 text-xs font-bold text-[#4F6C5D]">
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-[#176044]" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+            <span>الدفع عند الاستلام</span>
+          </div>
+          <div class="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-3 text-xs font-bold text-[#4F6C5D]">
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-[#176044]" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/><circle cx="7.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
+            <span>توصيل لـ69 ولاية</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA ثابت للهاتف فقط، يختفي كي الفورمولار يدخل للشاشة -->
+      <div id="mobile-sticky-cta" class="lp-mobile-sticky fixed inset-x-0 bottom-0 z-40 px-3 pt-3 md:hidden" role="region" aria-label="اطلب المنتج">
+        <div class="mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-[#D8E7DE] bg-white p-3 shadow-[0_-8px_32px_-18px_rgba(13,57,37,0.35)]">
+          <div class="min-w-0 flex-1 ps-1">
+            <p class="text-[11px] font-bold text-[#6A7F73]">السعر</p>
+            <p class="truncate text-lg font-black leading-tight text-[#123A2B]">{formatPrice(basePrice)} <span class="text-xs font-bold">{cur}</span></p>
+          </div>
+          <a href="#order-section-wrapper" class="lp-cta lp-sticky-button lp-cta-pulse inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#176044] px-5 py-3 text-sm font-extrabold text-white transition hover:bg-[#104C35] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#6BBF94]">
+            <span>اطلب الآن</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {!product && (
+    <div class="flex flex-col items-center justify-center bg-[#F6F9F7] px-6 py-24 text-center" dir={isRTL ? "rtl" : "ltr"}>
+      <div class="max-w-lg rounded-3xl border border-[#DFEAE3] bg-white p-8 shadow-sm sm:p-10">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="mx-auto mb-4 h-10 w-10 text-[#176044]" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01"/></svg>
+        <h1 class="text-2xl font-black text-[#15392A]">ما لقيناش صفحة المنتج</h1>
+        <p class="mt-3 text-sm leading-7 text-[#63776C]">تأكد من رابط صفحة الهبوط في الإعدادات، ومن بعد عاود جرّب.</p>
+      </div>
+    </div>
+  )}
+</StoreLayout>
+
+<style>
+  :global(html) {
+    scroll-behavior: smooth;
+    scroll-padding-top: 1rem;
+  }
+
+  .lp-page {
+    --lp-green: #176044;
+    --lp-ink: #153128;
+    font-family: "Tajawal", "Noto Kufi Arabic", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .lp-announcement {
+    background: #124b35;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+    padding-inline: max(1rem, env(safe-area-inset-left));
+  }
+
+  .lp-hero-art {
+    isolation: isolate;
+  }
+
+  .lp-art-ring {
+    animation: lp-ring-drift 14s ease-in-out infinite alternate;
+  }
+
+  .lp-cta-pulse {
+    animation: lp-cta-pulse 3.2s ease-in-out infinite;
+  }
+
+  .lp-feature {
+    transition: border-color 220ms ease, transform 220ms ease, background-color 220ms ease;
+  }
+
+  .lp-feature:hover {
+    border-color: #BFD9C9;
+    transform: translateY(-3px);
+    background-color: #FCFEFC;
+  }
+
+  .lp-mobile-sticky {
+    padding-bottom: calc(0.65rem + env(safe-area-inset-bottom));
+  }
+
+  .lp-mobile-sticky[hidden] {
+    display: none !important;
+  }
+
+  .lp-step-line {
+    top: 1.45rem;
+  }
+
+  .lp-page ::selection {
+    color: #FFFFFF;
+    background: #176044;
+  }
+
+  .lp-page a {
+    text-underline-offset: 0.2em;
+  }
+
+  .lp-page a:focus-visible {
+    outline-offset: 4px;
+  }
+
+  .lp-page img {
+    color: #466355;
+  }
+
+  .lp-page .lp-reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  .lp-motion-ready .lp-reveal:not(.is-visible) {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(2px);
+  }
+
+  .lp-motion-ready .lp-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+    transition: opacity 620ms cubic-bezier(0.16, 1, 0.3, 1), transform 620ms cubic-bezier(0.16, 1, 0.3, 1), filter 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes lp-cta-pulse {
+    0%, 100% { box-shadow: 0 12px 24px -12px rgba(17, 91, 60, 0.55); }
+    50% { box-shadow: 0 15px 30px -10px rgba(17, 91, 60, 0.7); }
+  }
+
+  @keyframes lp-ring-drift {
+    from { transform: translate3d(0, 0, 0) rotate(0deg); }
+    to { transform: translate3d(-6px, 8px, 0) rotate(12deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html) {
+      scroll-behavior: auto !important;
+    }
+
+    .lp-page *,
+    .lp-page *::before,
+    .lp-page *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    .lp-motion-ready .lp-reveal:not(.is-visible) {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .lp-story-wrap .lp-reveal {
+      transition-delay: 0ms !important;
+    }
+  }
+</style>
+
+<script>
+  const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  if (!reducedMotionQuery.matches && "IntersectionObserver" in window) {
+    const revealTargets = Array.from(document.querySelectorAll<HTMLElement>(".lp-reveal"));
+    document.documentElement.classList.add("lp-motion-ready");
+
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -36px 0px" });
+
+    revealTargets.forEach((target) => revealObserver.observe(target));
+  }
+
+  const stickyCta = document.getElementById("mobile-sticky-cta");
+  const orderTarget = document.getElementById("order-section-wrapper");
+
+  if (stickyCta && orderTarget && "IntersectionObserver" in window) {
+    const orderObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const formIsVisible = entry.isIntersecting && entry.intersectionRatio > 0.04;
+        stickyCta.toggleAttribute("hidden", formIsVisible);
+        stickyCta.setAttribute("aria-hidden", formIsVisible ? "true" : "false");
+      });
+    }, { threshold: [0, 0.04, 0.12] });
+
+    orderObserver.observe(orderTarget);
+  } else if (stickyCta && orderTarget) {
+    const syncStickyCta = () => {
+      const bounds = orderTarget.getBoundingClientRect();
+      const formIsVisible = bounds.top < window.innerHeight && bounds.bottom > 0;
+      stickyCta.toggleAttribute("hidden", formIsVisible);
+      stickyCta.setAttribute("aria-hidden", formIsVisible ? "true" : "false");
+    };
+    window.addEventListener("scroll", syncStickyCta, { passive: true });
+    window.addEventListener("resize", syncStickyCta);
+    syncStickyCta();
+  }
+</script>
+
+<!-- السكريبتات الأساسية: نفس المسارات ونفس الترتيب -->
+<script src="../theme/scripts/product.ts"></script>
+<script src="../theme/scripts/otp-step.ts"></script>
+<script src="../theme/scripts/turnstile-field.ts"></script>
+<script src="../theme/scripts/track-abandonment.ts"></script>
