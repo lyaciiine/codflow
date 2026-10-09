@@ -1,0 +1,1122 @@
+---
+import StoreLayout from "@/theme/layouts/StoreLayout.astro";
+import OrderForm from "@/theme/components/order/OrderForm.astro";
+import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
+import { getStoreContext } from "@/theme/config/store";
+import { fetchLandingPageBySlug } from "@/core/api/client";
+import { actions } from "astro:actions";
+import { isInputError } from "astro:actions";
+
+const storeCtx = await getStoreContext();
+const { config, content, isRTL } = storeCtx;
+
+// صفحة الهبوط
+const lp = await fetchLandingPageBySlug("lacoste");
+const product = lp?.product;
+
+const cur = config?.currencySymbol ?? "دج";
+
+const defaultVariant = product?.hasVariants
+  ? (
+      product?.variants?.find((v: any) => v?.isDefault) ??
+      product?.variants?.[0] ??
+      null
+    )
+  : null;
+
+const basePrice = defaultVariant?.price ?? product?.price ?? 0;
+const comparePrice =
+  defaultVariant?.compareAtPrice ??
+  product?.compareAtPrice ??
+  null;
+
+const isOutOfStock =
+  product?.trackInventory === true &&
+  product?.inventory === 0;
+
+const defaultVariantId = defaultVariant?.id ?? null;
+
+// معالجة إرسال الطلبية والتحويل لصفحة الشكر
+const result = Astro.getActionResult(actions.placeOrder);
+
+if (result?.data?.orderNumber) {
+  return Astro.redirect(
+    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
+    303,
+  );
+}
+
+const fieldErrors = isInputError(result?.error)
+  ? result.error.fields
+  : {};
+
+const serverError =
+  result?.error && !isInputError(result.error)
+    ? result.error.message
+    : null;
+
+// متغيرات التصميم فقط
+// الصور: product.images ثم lp.images، مع قبول string أو object.
+const rawProductImages = product?.images ?? lp?.images ?? [];
+
+const imageList = Array.isArray(rawProductImages)
+  ? rawProductImages
+  : rawProductImages
+    ? [rawProductImages]
+    : [];
+
+const galleryImages = imageList
+  .map((image: any) =>
+    typeof image === "string"
+      ? image
+      : image?.url ?? image?.src ?? image?.image ?? "",
+  )
+  .filter(
+    (image: any) =>
+      typeof image === "string" &&
+      image.trim().length > 0,
+  );
+
+const heroImage = galleryImages[0] ?? "";
+const storyImageOne = galleryImages[1] ?? "";
+const storyImageTwo = galleryImages[2] ?? "";
+const storyImageThree = galleryImages[3] ?? "";
+
+const hasDiscount =
+  Number(comparePrice ?? 0) > Number(basePrice ?? 0);
+
+const discountPercent = hasDiscount
+  ? Math.round(
+      (1 - Number(basePrice ?? 0) / Number(comparePrice ?? 0)) * 100,
+    )
+  : 0;
+
+const displayPrice = Number(basePrice ?? 0).toLocaleString("fr-DZ");
+const displayComparePrice = Number(
+  comparePrice ?? 0,
+).toLocaleString("fr-DZ");
+
+const productTitle = product?.name ?? "المنتج";
+---
+
+<StoreLayout
+  config={config}
+  content={content}
+  title={lp?.metaTitle || "عرض خاص"}
+  marketing={true}
+>
+  {product && (
+    <div
+      class="premium-landing min-h-screen bg-white pb-32 text-gray-900 md:pb-12"
+      dir={isRTL ? "rtl" : "ltr"}
+    >
+      <!-- جسر البيانات الأصلي -->
+      <div
+        id="page-data"
+        class="sr-only"
+        data-variants={JSON.stringify(product.variants ?? [])}
+        data-base-price={basePrice}
+        data-compare-price={comparePrice ?? ""}
+        data-cur={cur}
+        data-is-rtl={isRTL ? "1" : "0"}
+        data-shipping-label={content.shippingLabel}
+        data-shipping-calc={content.shippingCalculated}
+        data-shipping-free={content.shippingFree}
+        data-total-label={content.totalLabel}
+        data-commune-placeholder={content.formCommunePlaceholder}
+        data-commune-loading={content.formCommuneLoading}
+        data-commune-disabled={content.formCommuneDisabled}
+        data-offers={JSON.stringify(product.offers ?? [])}
+        data-track-inventory={product.trackInventory ? "1" : "0"}
+        data-out-of-stock-label={content.outOfStock}
+        data-qty-max-stock={content.qtyMaxStock}
+        data-inventory={String(product.inventory ?? 0)}
+        data-pixel-id={lp?.tracking?.pixelId ?? config?.pixelId ?? ""}
+        data-phone-invalid={content.formPhoneInvalid}
+        data-product-id={product.id}
+        data-product-name={product.name}
+      />
+
+      <ShippingIsland server:defer />
+
+      <!-- الشريط العلوي -->
+      <div class="bg-emerald-950 px-3 py-3 text-center text-xs font-bold text-white sm:text-sm">
+        <div class="mx-auto flex max-w-6xl items-center justify-center gap-2">
+          <svg
+            class="h-4 w-4 shrink-0 text-emerald-300"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path
+              d="M12 3.5 14.6 9l5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2L9.4 9 12 3.5Z"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span>
+            توصيل متوفر لـ 58 ولاية
+            <span class="mx-1 text-emerald-400">•</span>
+            الدفع عند الاستلام
+          </span>
+        </div>
+      </div>
+
+      <!-- الواجهة الرئيسية -->
+      <section class="relative overflow-hidden bg-gradient-to-b from-emerald-50 via-white to-white">
+        <div
+          class="pointer-events-none absolute -top-24 end-[-5rem] h-64 w-64 rounded-full bg-emerald-200/30 blur-3xl"
+          aria-hidden="true"
+        ></div>
+
+        <div class="relative mx-auto grid max-w-6xl items-center gap-8 px-4 pb-10 pt-7 sm:px-6 sm:pb-16 sm:pt-12 md:grid-cols-2 md:gap-12 md:py-16 lg:gap-20">
+          <!-- النص -->
+          <div class="landing-reveal order-2 text-start md:order-1">
+            <div class="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-extrabold text-emerald-800 shadow-sm sm:text-sm">
+              <span class="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
+              <span>
+                {hasDiscount ? "فرصة للاستفادة من السعر الحالي" : "اختيارك الجديد"}
+              </span>
+            </div>
+
+            <p class="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700 sm:text-sm">
+              {productTitle}
+            </p>
+
+            <h1 class="max-w-xl text-4xl font-black leading-[1.2] tracking-tight text-gray-950 sm:text-5xl lg:text-6xl">
+              أناقة تكمل
+              <span class="relative inline-block text-emerald-700">
+                إطلالتك
+                <span
+                  class="absolute inset-x-0 -bottom-1 -z-0 h-2 rounded-full bg-emerald-200/70"
+                  aria-hidden="true"
+                ></span>
+              </span>
+            </h1>
+
+            <p class="mt-5 max-w-lg text-sm leading-8 text-gray-600 sm:text-base">
+              اكتشف المنتج، شوف التفاصيل والصور المتوفرة، واختار اللي يناسبك.
+              كمّل طلبك بكل سهولة وخلّص كي توصلك الطلبية.
+            </p>
+
+            <div class="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-baseline gap-2">
+                  <span class="text-3xl font-black tracking-tight text-emerald-800 sm:text-4xl">
+                    {displayPrice}
+                  </span>
+                  <span class="text-sm font-bold text-emerald-800">
+                    {cur}
+                  </span>
+                </div>
+
+                {
+                  hasDiscount && (
+                    <div class="mt-1 flex items-center gap-2">
+                      <span class="text-sm text-gray-400 line-through">
+                        {displayComparePrice} {cur}
+                      </span>
+                      <span class="text-xs font-bold text-gray-500">
+                        السعر قبل التخفيض
+                      </span>
+                    </div>
+                  )
+                }
+              </div>
+
+              {
+                hasDiscount && (
+                  <span class="rounded-xl bg-rose-50 px-3 py-2 text-sm font-black text-rose-700 ring-1 ring-inset ring-rose-100">
+                    ناقص {discountPercent}٪
+                  </span>
+                )
+              }
+            </div>
+
+            <a
+              href="#order-section-wrapper"
+              class:list={[
+                "hero-cta-pulse mt-7 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-emerald-700 px-6 py-4 text-center text-base font-black text-white shadow-lg shadow-emerald-900/15 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300 active:translate-y-0 sm:w-auto sm:min-w-64",
+                isOutOfStock && "pointer-events-none opacity-50",
+              ]}
+              aria-label={`اطلب ${productTitle} الآن`}
+              aria-disabled={isOutOfStock ? "true" : "false"}
+            >
+              <span>
+                {isOutOfStock ? "المنتج غير متوفر حالياً" : "اطلب الآن"}
+              </span>
+
+              <svg
+                class="h-5 w-5 rtl:rotate-180"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </a>
+
+            <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-gray-500">
+              <span class="inline-flex items-center gap-1.5">
+                <svg
+                  class="h-4 w-4 text-emerald-700"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="6" width="18" height="13" rx="2" />
+                  <path d="M3 10h18M7 15h3" />
+                </svg>
+                الدفع عند الاستلام
+              </span>
+
+              <span class="inline-flex items-center gap-1.5">
+                <svg
+                  class="h-4 w-4 text-emerald-700"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <path d="M3 7h11v10H3z" />
+                  <path d="M14 10h4l3 3v4h-7z" />
+                  <circle cx="7.5" cy="18" r="2" />
+                  <circle cx="17.5" cy="18" r="2" />
+                </svg>
+                توصيل لـ 58 ولاية
+              </span>
+            </div>
+          </div>
+
+          <!-- الصورة الرئيسية -->
+          <div class="landing-reveal order-1 md:order-2">
+            <div class="relative mx-auto max-w-lg rounded-[2rem] bg-emerald-950 p-2 shadow-2xl shadow-emerald-950/15 sm:rounded-[2.5rem] sm:p-3">
+              <div class="relative aspect-[4/4.5] overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-emerald-100 via-white to-gray-100 sm:rounded-[2rem]">
+                {
+                  heroImage ? (
+                    <img
+                      src={heroImage}
+                      alt={productTitle}
+                      class="h-full w-full object-cover"
+                      loading="eager"
+                      fetchpriority="high"
+                      decoding="async"
+                      width="900"
+                      height="1000"
+                    />
+                  ) : (
+                    <div class="flex h-full flex-col items-center justify-center p-8 text-center">
+                      <div class="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-white text-emerald-800 shadow-md">
+                        <svg
+                          class="h-10 w-10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="3" width="18" height="18" rx="3" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <path d="m21 15-5-5L5 21" />
+                        </svg>
+                      </div>
+                      <p class="text-xl font-black text-emerald-950">
+                        {productTitle}
+                      </p>
+                      <p class="mt-2 text-sm leading-7 text-gray-500">
+                        زيد صورة المنتج في بيانات الصفحة باش تظهر هنا.
+                      </p>
+                    </div>
+                  )
+                }
+
+                <div
+                  class="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-emerald-950/25 to-transparent"
+                  aria-hidden="true"
+                ></div>
+
+                {
+                  hasDiscount && (
+                    <div class="absolute start-4 top-4 flex min-h-16 min-w-16 flex-col items-center justify-center rounded-2xl bg-emerald-800 px-3 py-2 text-white shadow-lg sm:start-5 sm:top-5">
+                      <span class="text-xl font-black">
+                        -{discountPercent}٪
+                      </span>
+                      <span class="text-[10px] font-bold">تخفيض</span>
+                    </div>
+                  )
+                }
+
+                <div class="absolute bottom-4 end-4 flex items-center gap-2 rounded-full border border-white/60 bg-white/90 px-3 py-2 text-xs font-bold text-emerald-950 shadow-lg backdrop-blur sm:bottom-5 sm:end-5">
+                  <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100" aria-hidden="true">
+                    <svg
+                      class="h-3.5 w-3.5 text-emerald-800"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="m5 12 4 4L19 6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  خلّص كي توصلك
+                </div>
+              </div>
+            </div>
+
+            <p class="mt-4 text-center text-xs leading-6 text-gray-500">
+              الصور المعروضة مربوطة ببيانات المنتج.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- مؤشرات الثقة -->
+      <section
+        class="landing-reveal border-y border-gray-100 bg-white px-4 py-5 sm:px-6 sm:py-7"
+        aria-label="معلومات الطلب والتوصيل"
+      >
+        <div class="mx-auto grid max-w-6xl grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+          <div class="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-4">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+              <svg
+                class="h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M3 10h18M7 15h4" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-black text-gray-900">الدفع عند الاستلام</p>
+              <p class="mt-1 text-xs leading-5 text-gray-500">تخلّص كي توصلك الطلبية</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-4">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+              <svg
+                class="h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <path d="M3 7h11v10H3z" />
+                <path d="M14 10h4l3 3v4h-7z" />
+                <circle cx="7.5" cy="18" r="2" />
+                <circle cx="17.5" cy="18" r="2" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-black text-gray-900">توصيل لـ 58 ولاية</p>
+              <p class="mt-1 text-xs leading-5 text-gray-500">دخل معلومات التوصيل</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-4">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+              <svg
+                class="h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <path d="M12 3 19 6v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6l7-3Z" />
+                <path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-black text-gray-900">خطوات طلب واضحة</p>
+              <p class="mt-1 text-xs leading-5 text-gray-500">من الاختيار حتى الإرسال</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- المزايا -->
+      <section class="px-4 py-14 sm:px-6 sm:py-20">
+        <div class="mx-auto max-w-6xl">
+          <div class="landing-reveal mx-auto mb-8 max-w-2xl text-center sm:mb-12">
+            <span class="inline-flex rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-extrabold text-emerald-800">
+              اختار بثقة
+            </span>
+
+            <h2 class="mt-4 text-2xl font-black leading-tight text-gray-950 sm:text-4xl">
+              تفاصيل تخلّي اختيارك أسهل
+            </h2>
+
+            <p class="mt-3 text-sm leading-7 text-gray-600 sm:text-base">
+              كل ما تحتاج تعرفه قبل ما تطلب، في صفحة وحدة وبطريقة واضحة.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <article class="landing-reveal rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:p-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                  <path d="m12 3 2.5 5.1 5.6.8-4.1 4 1 5.7-5-2.7-5 2.7 1-5.7-4.1-4 5.6-.8L12 3Z" />
+                </svg>
+              </div>
+              <h3 class="mt-5 text-base font-black text-gray-900">ستايل يكمل إطلالتك</h3>
+              <p class="mt-2 text-sm leading-7 text-gray-600">
+                اختار المنتج اللي يعكس ذوقك ويناسب ستايلك اليومي.
+              </p>
+            </article>
+
+            <article class="landing-reveal rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:p-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                  <path d="M5 4h14v16H5zM9 4V2m6 2V2M8 9h8M8 13h8M8 17h5" stroke-linecap="round" />
+                </svg>
+              </div>
+              <h3 class="mt-5 text-base font-black text-gray-900">تفاصيل واضحة</h3>
+              <p class="mt-2 text-sm leading-7 text-gray-600">
+                شوف الصور والسعر والمعلومات المتوفرة قبل تأكيد الطلبية.
+              </p>
+            </article>
+
+            <article class="landing-reveal rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:p-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                  <path d="M4 7h11v10H4z" />
+                  <path d="M15 10h3l3 3v4h-6z" />
+                  <circle cx="8" cy="18" r="2" />
+                  <circle cx="18" cy="18" r="2" />
+                  <path d="M2 4h9" stroke-linecap="round" />
+                </svg>
+              </div>
+              <h3 class="mt-5 text-base font-black text-gray-900">توصيل عبر الولايات</h3>
+              <p class="mt-2 text-sm leading-7 text-gray-600">
+                دخل ولاية وبلدية التوصيل في الفورمولار.
+              </p>
+            </article>
+
+            <article class="landing-reveal rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:p-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                  <rect x="4" y="3" width="16" height="18" rx="3" />
+                  <path d="m8 12 2.5 2.5L16 9" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+              <h3 class="mt-5 text-base font-black text-gray-900">طلبية بخطوات سهلة</h3>
+              <p class="mt-2 text-sm leading-7 text-gray-600">
+                عمّر المعلومات المطلوبة وراجع طلبك قبل الإرسال.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- عرض الصور بالتدريج -->
+      <section class="border-y border-gray-100 bg-gray-50 px-4 py-14 sm:px-6 sm:py-20">
+        <div class="mx-auto max-w-6xl">
+          <div class="landing-reveal mb-9 text-start sm:mb-12 md:max-w-2xl">
+            <p class="text-xs font-black tracking-wide text-emerald-700 sm:text-sm">شوف التفاصيل</p>
+            <h2 class="mt-3 text-3xl font-black leading-tight tracking-tight text-gray-950 sm:text-4xl">
+              اختيار يبان من أول نظرة
+            </h2>
+            <p class="mt-3 text-sm leading-7 text-gray-600 sm:text-base">
+              اكتشف الصور المتوفرة للمنتج وخذ وقتك قبل ما تكمل طلبيتك.
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-5 sm:gap-7">
+            <!-- الصورة الثانية -->
+            <article class="landing-reveal grid overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-sm md:grid-cols-2 md:rounded-[2rem]">
+              <div class="relative min-h-[250px] overflow-hidden bg-emerald-100 sm:min-h-[340px]">
+                {
+                  storyImageOne ? (
+                    <img
+                      src={storyImageOne}
+                      alt={`تفاصيل ${productTitle}`}
+                      class="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      width="900"
+                      height="900"
+                    />
+                  ) : (
+                    <div class="flex min-h-[250px] h-full flex-col items-center justify-center bg-gradient-to-br from-emerald-100 via-white to-gray-200 p-8 text-center sm:min-h-[340px]">
+                      <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-emerald-800 shadow-sm">
+                        <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                          <rect x="3" y="3" width="18" height="18" rx="3" />
+                          <path d="M7 15 11 11l3 3 2-2 2 3" />
+                        </svg>
+                      </div>
+                      <p class="mt-4 font-bold text-emerald-950">صور إضافية للمنتج</p>
+                    </div>
+                  )
+                }
+              </div>
+
+              <div class="flex flex-col justify-center p-6 sm:p-9 md:p-12">
+                <span class="mb-4 inline-flex w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-800">
+                  التفاصيل تهم
+                </span>
+                <h3 class="text-2xl font-black leading-snug text-gray-950 sm:text-3xl">
+                  شوف المنتج من زوايا مختلفة
+                </h3>
+                <p class="mt-4 text-sm leading-8 text-gray-600 sm:text-base">
+                  الصور الإضافية تعاونك تتعرّف على الشكل والتفاصيل الظاهرة
+                  قبل ما تختار وتبعث الطلبية.
+                </p>
+                <a
+                  href="#order-section-wrapper"
+                  class="mt-6 inline-flex w-fit items-center gap-2 text-sm font-black text-emerald-800 transition hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  اختار المنتج
+                  <svg class="h-4 w-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M5 12h14m-7-7 7 7-7 7" />
+                  </svg>
+                </a>
+              </div>
+            </article>
+
+            <!-- الصورة الثالثة -->
+            <article class="landing-reveal grid overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-sm md:grid-cols-2 md:rounded-[2rem]">
+              <div class="flex flex-col justify-center p-6 sm:p-9 md:order-1 md:p-12">
+                <span class="mb-4 inline-flex w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-800">
+                  على حساب ذوقك
+                </span>
+                <h3 class="text-2xl font-black leading-snug text-gray-950 sm:text-3xl">
+                  شوف الصور قبل تأكيد الطلب
+                </h3>
+                <p class="mt-4 text-sm leading-8 text-gray-600 sm:text-base">
+                  قارن التفاصيل الظاهرة في الصور واختار المواصفات المتاحة
+                  لي تناسبك داخل الفورمولار.
+                </p>
+              </div>
+
+              <div class="relative min-h-[250px] overflow-hidden bg-gradient-to-br from-gray-100 via-emerald-50 to-emerald-200 sm:min-h-[340px]">
+                {
+                  storyImageTwo ? (
+                    <img
+                      src={storyImageTwo}
+                      alt={`صورة إضافية لـ ${productTitle}`}
+                      class="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      width="900"
+                      height="900"
+                    />
+                  ) : (
+                    <div class="flex min-h-[250px] h-full flex-col items-center justify-center p-8 text-center sm:min-h-[340px]">
+                      <span class="text-5xl font-black text-emerald-900/10">02</span>
+                      <p class="mt-2 max-w-xs text-xl font-black leading-8 text-emerald-950">{productTitle}</p>
+                      <p class="mt-2 text-sm text-emerald-900/70">تفاصيل المنتج المتاحة في الصفحة</p>
+                    </div>
+                  )
+                }
+              </div>
+            </article>
+
+            <!-- الصورة الرابعة -->
+            <article class="landing-reveal grid overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-sm md:grid-cols-2 md:rounded-[2rem]">
+              <div class="relative min-h-[250px] overflow-hidden bg-emerald-950 sm:min-h-[340px]">
+                {
+                  storyImageThree ? (
+                    <img
+                      src={storyImageThree}
+                      alt={`تفاصيل إضافية لـ ${productTitle}`}
+                      class="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      width="900"
+                      height="900"
+                    />
+                  ) : (
+                    <div class="flex min-h-[250px] h-full flex-col items-center justify-center p-8 text-center sm:min-h-[340px]">
+                      <div class="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/5 text-emerald-200">
+                        <svg class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                          <path d="M12 3 19 6v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6l7-3Z" />
+                          <path d="m9 12 2 2 4-4" />
+                        </svg>
+                      </div>
+                      <p class="mt-5 text-lg font-black text-white">اختار بكل وضوح</p>
+                      <p class="mt-2 text-sm leading-7 text-emerald-100/75">السعر ومعلومات الطلب في مكان واحد</p>
+                    </div>
+                  )
+                }
+              </div>
+
+              <div class="flex flex-col justify-center p-6 sm:p-9 md:p-12">
+                <span class="mb-4 inline-flex w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-800">
+                  من الاختيار للطلب
+                </span>
+                <h3 class="text-2xl font-black leading-snug text-gray-950 sm:text-3xl">
+                  كلشي واجد باش تكمل طلبيتك
+                </h3>
+                <p class="mt-4 text-sm leading-8 text-gray-600 sm:text-base">
+                  كي تكون واجد، انتقل للفورمولار، دخّل معلومات التوصيل،
+                  وراجع التفاصيل قبل إرسال الطلب.
+                </p>
+                <a
+                  href="#order-section-wrapper"
+                  class="mt-6 inline-flex w-fit items-center gap-2 text-sm font-black text-emerald-800 transition hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  روح للطلب
+                  <svg class="h-4 w-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M5 12h14m-7-7 7 7-7 7" />
+                  </svg>
+                </a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- كيفاش تطلب -->
+      <section class="px-4 py-14 sm:px-6 sm:py-20">
+        <div class="mx-auto max-w-5xl">
+          <div class="landing-reveal mb-9 text-center sm:mb-12">
+            <p class="text-xs font-black tracking-wide text-emerald-700 sm:text-sm">سهلة وبسيطة</p>
+            <h2 class="mt-3 text-2xl font-black leading-tight text-gray-950 sm:text-4xl">كيفاش تطلب؟</h2>
+            <p class="mt-3 text-sm leading-7 text-gray-600 sm:text-base">
+              ثلاث خطوات وتكون كملت معلومات طلبيتك.
+            </p>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-3 md:gap-6">
+            <article class="landing-reveal rounded-3xl border border-gray-100 bg-white p-6 text-start shadow-sm sm:p-7">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-lg font-black text-white" aria-hidden="true">١</span>
+              <h3 class="mt-5 text-lg font-black text-gray-950">عمّر المعلومات</h3>
+              <p class="mt-2 text-sm leading-7 text-gray-600">
+                دخل اسمك ورقم هاتفك واختار معلومات التوصيل المطلوبة.
+              </p>
+            </article>
+
+            <article class="landing-reveal rounded-3xl border border-gray-100 bg-white p-6 text-start shadow-sm sm:p-7">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-lg font-black text-white" aria-hidden="true">٢</span>
+              <h3 class="mt-5 text-lg font-black text-gray-950">راجع طلبيتك</h3>
+              <p class="mt-2 text-sm leading-7 text-gray-600">
+                تأكد من الاختيارات والكمية ومعلوماتك قبل ما تبعث الطلب.
+              </p>
+            </article>
+
+            <article class="landing-reveal rounded-3xl border border-gray-100 bg-white p-6 text-start shadow-sm sm:p-7">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-lg font-black text-white" aria-hidden="true">٣</span>
+              <h3 class="mt-5 text-lg font-black text-gray-950">استلم وخلّص</h3>
+              <p class="mt-2 text-sm leading-7 text-gray-600">
+                استقبل الطلبية في عنوان التوصيل وخلّص عند الاستلام.
+              </p>
+            </article>
+          </div>
+
+          <div class="landing-reveal mt-8 text-center">
+            <a
+              href="#order-section-wrapper"
+              class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 text-sm font-black text-emerald-900 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
+            >
+              ابدأ طلبك الآن
+              <svg class="h-4 w-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 12h14m-7-7 7 7-7 7" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- عنوان الفورمولار -->
+      <section class="scroll-mt-6 bg-emerald-950 px-4 pb-10 pt-12 text-white sm:px-6 sm:pb-14 sm:pt-16">
+        <div class="landing-reveal mx-auto max-w-3xl text-center">
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
+            <svg class="h-7 w-7 text-emerald-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <rect x="4" y="3" width="16" height="18" rx="3" />
+              <path d="M8 8h8M8 12h8M8 16h4" stroke-linecap="round" />
+            </svg>
+          </div>
+
+          <h2 class="mt-5 text-3xl font-black leading-tight sm:text-4xl">
+            كمّل طلبيتك الآن
+          </h2>
+
+          <p class="mx-auto mt-4 max-w-xl text-sm leading-8 text-emerald-100/80 sm:text-base">
+            دخّل معلوماتك في الفورمولار لتحت، اختار طريقة التوصيل،
+            وراجع المجموع قبل ما تبعث الطلب.
+          </p>
+
+          <div class="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold text-emerald-100 sm:text-sm">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="M12 3 19 6v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6l7-3Z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+            الدفع عند الاستلام
+          </div>
+        </div>
+      </section>
+
+      <!-- الفورمولار الأصلي: نفس المعرّف ونفس الخصائص -->
+      <div
+        class="relative z-10 mx-auto -mt-4 max-w-3xl px-3 sm:-mt-6 sm:px-6"
+        id="order-section-wrapper"
+        data-order-target
+      >
+        <div class="landing-reveal overflow-hidden rounded-3xl border border-gray-200 bg-white p-4 shadow-xl shadow-emerald-950/10 sm:rounded-[2rem] sm:p-7 md:p-9">
+          <div class="mb-6 flex items-start gap-3 border-b border-gray-100 pb-5">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5" stroke-linecap="round" />
+              </svg>
+            </div>
+
+            <div class="min-w-0 pt-0.5">
+              <h2 class="text-lg font-black text-gray-950 sm:text-xl">
+                معلومات التوصيل والطلب
+              </h2>
+              <p class="mt-1 text-xs leading-6 text-gray-500 sm:text-sm">
+                تأكد من معلوماتك باش تسهّل عملية التوصيل.
+              </p>
+            </div>
+          </div>
+
+          <OrderForm
+            product={product}
+            content={content}
+            fieldErrors={fieldErrors}
+            serverError={serverError}
+            basePrice={basePrice}
+            defaultVariant={defaultVariant ?? null}
+            cur={cur}
+            isRTL={isRTL}
+            offers={product.offers}
+            defaultVariantId={defaultVariantId}
+            isOutOfStock={isOutOfStock}
+            otpEnabled={config.otpEnabled === true}
+            turnstileEnabled={config.turnstileEnabled === true}
+            turnstileSiteKey={config.turnstileSiteKey ?? null}
+            pages={config.pages ?? []}
+            formPolicy={config.checkoutForm}
+            landingPageSlug={lp.slug}
+          />
+
+          <!-- ضمانات تحت الفورمولار -->
+          <div class="mt-6 border-t border-gray-100 pt-5">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+              <div class="flex items-center gap-2.5 text-xs font-bold text-gray-600">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="3" y="6" width="18" height="13" rx="2" />
+                    <path d="M3 10h18" />
+                  </svg>
+                </span>
+                الدفع عند الاستلام
+              </div>
+
+              <div class="flex items-center gap-2.5 text-xs font-bold text-gray-600">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M3 7h11v10H3z" />
+                    <path d="M14 10h4l3 3v4h-7z" />
+                    <circle cx="7.5" cy="18" r="2" />
+                    <circle cx="17.5" cy="18" r="2" />
+                  </svg>
+                </span>
+                توصيل لـ 58 ولاية
+              </div>
+
+              <div class="flex items-center gap-2.5 text-xs font-bold text-gray-600">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                راجع معلوماتك قبل الإرسال
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA ثابت في الهاتف فقط -->
+      <div
+        class="mobile-sticky-cta fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 px-3 pt-3 backdrop-blur-xl md:hidden"
+        style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));"
+        aria-label="الطلب السريع"
+      >
+        <div class="mx-auto flex max-w-xl items-center gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-bold text-gray-500">سعر المنتج</p>
+            <div class="flex flex-wrap items-baseline gap-1.5">
+              <span class="text-xl font-black text-emerald-900">
+                {displayPrice}
+              </span>
+              <span class="text-xs font-bold text-emerald-800">{cur}</span>
+              {
+                hasDiscount && (
+                  <span class="text-xs text-gray-400 line-through">
+                    {displayComparePrice} {cur}
+                  </span>
+                )
+              }
+            </div>
+          </div>
+
+          <a
+            href="#order-section-wrapper"
+            class:list={[
+              "inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-900/15 transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300",
+              isOutOfStock && "pointer-events-none opacity-50",
+            ]}
+            aria-label={`اطلب ${productTitle} الآن`}
+            aria-disabled={isOutOfStock ? "true" : "false"}
+          >
+            <span>{isOutOfStock ? "غير متوفر" : "اطلب الآن"}</span>
+            <svg
+              class="h-4 w-4 rtl:rotate-180"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {!product && (
+    <div
+      class="flex min-h-[60vh] flex-col items-center justify-center px-6 py-24 text-center"
+      dir={isRTL ? "rtl" : "ltr"}
+    >
+      <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+        <svg
+          class="h-8 w-8"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5m0 4h.01" stroke-linecap="round" />
+        </svg>
+      </div>
+
+      <h1 class="mt-5 text-2xl font-black text-gray-900">
+        صفحة المنتج ما لقايناهش
+      </h1>
+
+      <p class="mt-3 max-w-md text-sm leading-7 text-gray-600">
+        تأكد بلي رابط صفحة الهبوط صحيح، وأن المنتج مربوط بالصفحة في لوحة التحكم.
+      </p>
+    </div>
+  )}
+</StoreLayout>
+
+<!-- الأنيميشن وسلوك CTA الثابت -->
+<script>
+  const initializeLandingPage = () => {
+    const root = document.querySelector(".premium-landing");
+    if (!root) return;
+
+    const stickyCta = root.querySelector(".mobile-sticky-cta");
+    const orderWrapper = root.querySelector("#order-section-wrapper");
+    const revealElements = root.querySelectorAll(".landing-reveal");
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    // إظهار الأقسام تدريجياً عند الوصول إليها.
+    if (
+      !reducedMotion &&
+      "IntersectionObserver" in window &&
+      revealElements.length
+    ) {
+      document.documentElement.classList.add("js-reveal-ready");
+
+      const revealObserver = new IntersectionObserver(
+        (entries, observer) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          });
+        },
+        {
+          root: null,
+          threshold: 0.08,
+          rootMargin: "0px 0px -24px 0px",
+        },
+      );
+
+      revealElements.forEach((element) => {
+        revealObserver.observe(element);
+      });
+    } else {
+      revealElements.forEach((element) => {
+        element.classList.add("is-visible");
+      });
+    }
+
+    if (!stickyCta || !orderWrapper) return;
+
+    // إخفاء الزر كي يظهر الفورمولار.
+    if ("IntersectionObserver" in window) {
+      const orderObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            stickyCta.classList.toggle(
+              "is-hidden",
+              entry.isIntersecting,
+            );
+          });
+        },
+        {
+          root: null,
+          threshold: 0,
+          rootMargin: "0px",
+        },
+      );
+
+      orderObserver.observe(orderWrapper);
+    }
+
+    // تحديث الحالة عند تبديل حجم الشاشة.
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
+
+    const updateStickyVisibility = () => {
+      if (!mobileQuery.matches) {
+        stickyCta.classList.remove("is-hidden");
+      }
+    };
+
+    updateStickyVisibility();
+    mobileQuery.addEventListener?.("change", updateStickyVisibility);
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeLandingPage, {
+      once: true,
+    });
+  } else {
+    initializeLandingPage();
+  }
+</script>
+
+<!-- السكريبتات الأساسية الأصلية، بنفس الترتيب -->
+<script src="../theme/scripts/product.ts"></script>
+<script src="../theme/scripts/otp-step.ts"></script>
+<script src="../theme/scripts/turnstile-field.ts"></script>
+<script src="../theme/scripts/track-abandonment.ts"></script>
+
+<style is:global>
+  html {
+    scroll-padding-top: 1rem;
+  }
+
+  .premium-landing #order-section-wrapper {
+    scroll-margin-top: 1rem;
+  }
+
+  .premium-landing .landing-reveal {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 500ms ease,
+      transform 500ms ease;
+  }
+
+  .js-reveal-ready .premium-landing .landing-reveal:not(.is-visible) {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  .js-reveal-ready .premium-landing .landing-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .premium-landing .hero-cta-pulse {
+    animation: landing-cta-pulse 2.8s ease-in-out infinite;
+  }
+
+  .premium-landing .mobile-sticky-cta {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    transition:
+      transform 250ms ease,
+      opacity 250ms ease,
+      visibility 250ms ease;
+    will-change: transform;
+  }
+
+  .premium-landing .mobile-sticky-cta.is-hidden {
+    transform: translateY(110%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .premium-landing a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .premium-landing a:focus-visible {
+    outline-offset: 4px;
+  }
+
+  @keyframes landing-cta-pulse {
+    0%,
+    100% {
+      box-shadow: 0 8px 22px rgb(6 78 59 / 12%);
+    }
+
+    50% {
+      box-shadow: 0 10px 28px rgb(6 78 59 / 22%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto !important;
+    }
+
+    .premium-landing *,
+    .premium-landing *::before,
+    .premium-landing *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0ms !important;
+    }
+
+    .js-reveal-ready .premium-landing .landing-reveal:not(.is-visible) {
+      opacity: 1;
+      transform: none;
+    }
+
+    .premium-landing .mobile-sticky-cta,
+    .premium-landing .mobile-sticky-cta.is-hidden {
+      transition: none !important;
+    }
+  }
+</style>
