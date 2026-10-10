@@ -10,7 +10,7 @@ import { isInputError } from "astro:actions";
 const storeCtx = await getStoreContext();
 const { config, content, isRTL } = storeCtx;
 
-// استدعاء صفحة الهبوط بالـ Slug الصحيح
+// استدعاء صفحة الهبوط بالـ Slug الصحيح (مثلاً: lacoste أو اسم صفحة الهبوط اللي راك دايرها في الداشبورد)
 const lp = await fetchLandingPageBySlug("lacoste"); 
 const product = lp?.product;
 
@@ -23,14 +23,19 @@ const comparePrice = defaultVariant?.compareAtPrice ?? product?.compareAtPrice ?
 const isOutOfStock = product?.trackInventory && product.inventory === 0;
 const defaultVariantId = defaultVariant?.id ?? null;
 
-// معالجة إرسال الطلبية وعرض رسالة النجاح في نفس الصفحة بدون تحويل
+// معالجة إرسال الطلبية
 const result = Astro.getActionResult(actions.placeOrder);
-const placedOrder = result?.data?.orderNumber ? result.data : null;
-
+if (result?.data?.orderNumber) {
+  return Astro.redirect(
+    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
+    303,
+  );
+}
 const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
 const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
 
 // ───────── إضافات خاصة بالديزاين فقط (ما تأثرش على اللوجيك) ─────────
+// نجيبو صور المنتج بطريقة آمنة (تقبل نص مباشر ولا أوبجيكت فيه url/src)
 const rawImages: any[] = (product as any)?.images ?? (lp as any)?.images ?? [];
 const gallery: string[] = rawImages
   .map((img: any) => (typeof img === "string" ? img : (img?.url ?? img?.src ?? img?.image ?? null)))
@@ -209,7 +214,7 @@ const steps = [
         </div>
       </section>
 
-      <!-- ═════════ قصة الصور ═════════ -->
+      <!-- ═════════ قصة الصور (مرصوصة عمودياً) ═════════ -->
       {storyImages.length > 0 && (
         <section class="max-w-2xl mx-auto px-4 pt-14">
           <div class="reveal text-center mb-6">
@@ -256,53 +261,28 @@ const steps = [
         <p class="reveal delay-1 text-gray-600">عمر المعلومات تحت، وادفع كاش وقت يوصلك. بلا مخاطرة.</p>
       </section>
 
-      <!-- 📦 فورمولار الدفع أو رسالة النجاح في نفس المكان -->
+      <!-- 📦 فورمولار الدفع وحده صافي -->
       <div class="max-w-xl mx-auto px-4 scroll-mt-4" id="order-section-wrapper">
-        <div class="reveal bg-white rounded-3xl shadow-2xl shadow-emerald-900/10 p-5 sm:p-7 border border-emerald-100 ring-1 ring-emerald-900/5 text-center">
-          {placedOrder ? (
-            <div class="py-6">
-              <div class="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-              </div>
-              <h3 class="text-2xl font-black text-gray-900 mb-2">تم تسجيل طلبك بنجاح!</h3>
-              <p class="text-gray-600 mb-6">شكراً لك، لقد تم استلام طلبك وسنتصل بك قريباً لتأكيده.</p>
-              
-              <div class="bg-emerald-50/60 border border-emerald-100 p-4 rounded-2xl max-w-sm mx-auto text-start mb-6 text-sm">
-                <div class="flex justify-between py-1.5 border-b border-emerald-900/10">
-                  <span class="text-gray-600">رقم الطلب:</span>
-                  <span class="font-black text-gray-900" dir="ltr">{placedOrder.orderNumber}</span>
-                </div>
-                <div class="flex justify-between py-1.5 pt-2">
-                  <span class="text-gray-600">المجموع الكلي:</span>
-                  <span class="font-black text-emerald-900" dir="ltr">{placedOrder.total} {cur}</span>
-                </div>
-              </div>
-
-              <a href="" class="inline-block bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-8 py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-900/20">
-                تسجيل طلب آخر
-              </a>
-            </div>
-          ) : (
-            <OrderForm
-              product={product}
-              content={content}
-              fieldErrors={fieldErrors}
-              serverError={serverError}
-              basePrice={basePrice}
-              defaultVariant={defaultVariant ?? null}
-              cur={cur}
-              isRTL={isRTL}
-              offers={product.offers}
-              defaultVariantId={defaultVariantId}
-              isOutOfStock={isOutOfStock}
-              otpEnabled={config.otpEnabled === true}
-              turnstileEnabled={config.turnstileEnabled === true}
-              turnstileSiteKey={config.turnstileSiteKey ?? null}
-              pages={config.pages ?? []}
-              formPolicy={config.checkoutForm}
-              landingPageSlug={lp.slug}
-            />
-          )}
+        <div class="reveal bg-white rounded-3xl shadow-2xl shadow-emerald-900/10 p-5 sm:p-7 border border-emerald-100 ring-1 ring-emerald-900/5">
+          <OrderForm
+            product={product}
+            content={content}
+            fieldErrors={fieldErrors}
+            serverError={serverError}
+            basePrice={basePrice}
+            defaultVariant={defaultVariant ?? null}
+            cur={cur}
+            isRTL={isRTL}
+            offers={product.offers}
+            defaultVariantId={defaultVariantId}
+            isOutOfStock={isOutOfStock}
+            otpEnabled={config.otpEnabled === true}
+            turnstileEnabled={config.turnstileEnabled === true}
+            turnstileSiteKey={config.turnstileSiteKey ?? null}
+            pages={config.pages ?? []}
+            formPolicy={config.checkoutForm}
+            landingPageSlug={lp.slug}
+          />
         </div>
 
         <!-- ضمانات تحت الفورمولار -->
@@ -383,7 +363,7 @@ const steps = [
 <script src="../theme/scripts/turnstile-field.ts"></script>
 <script src="../theme/scripts/track-abandonment.ts"></script>
 
-<!-- سكريبت الديزاين: أنيميشن السكرول + إخفاء الزر الثابت -->
+<!-- سكريبت الديزاين: أنيميشن السكرول + إخفاء الزر الثابت (ما يتدخلش في لوجيك الطلب) -->
 <script>
   const revealEls = document.querySelectorAll<HTMLElement>(".reveal");
   if ("IntersectionObserver" in window) {
