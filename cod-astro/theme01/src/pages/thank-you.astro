@@ -1,5 +1,4 @@
 ---
-import StoreLayout from "@/theme/layouts/StoreLayout.astro";
 import { getStoreContext } from "@/theme/config/store";
 import { fetchOrderTracking } from "@/core/api/client";
 import { Icon } from "astro-icon/components";
@@ -8,16 +7,6 @@ const orderNumber = Astro.url.searchParams.get("order") ?? "";
 const orderId = Astro.url.searchParams.get("oid") ?? "";
 
 // Which pixel this ORDER belongs to, and whether a browser event fires for it.
-//
-// This page knows the order id and nothing about which landing page the
-// shopper came from. It must not guess: attribution is best-effort server-side
-// (an unknown, draft or archived slug leaves an order unattributed), so a slug
-// read from the URL could name a pixel the server never recorded — and Meta
-// deduplicates per pixel, so a browser and a server that disagree write two
-// conversions into two ad accounts instead of merging them into one.
-//
-// Asked in parallel with the store config: this page is reached after the
-// money is banked, but there is no reason to make it serial.
 const [storeCtx, tracking] = await Promise.all([
   getStoreContext(),
   fetchOrderTracking(orderId),
@@ -33,19 +22,9 @@ if (!orderNumber) {
   return Astro.redirect("/");
 }
 
-// The server returns the DECISION, not the configuration — `event` is already
-// null when the merchant's conversion fires further down the funnel. Nothing
-// here re-derives that rule.
 const pixelId = tracking?.pixelId ?? null;
 const checkoutEvent = tracking?.event ?? null;
 const totalNum = total ? parseInt(total) : null;
-
-// The head must load the pixel the sale is fired at, not the store's:
-// trackSingle at a pixel that was never fbq('init')-ed does nothing at all.
-// When the lookup failed, pixelId is null and no pixel loads here — a stray
-// PageView in the wrong ad account is the exact mixing this feature removes,
-// and the server mirror arrives either way.
-const pageConfig = { ...config, pixelId };
 
 const steps = [
   { icon: "heroicons:phone", title: content.step1Title, sub: content.step1Sub },
@@ -54,161 +33,130 @@ const steps = [
 ];
 ---
 
-<StoreLayout
-  config={pageConfig}
-  content={content}
-  title={`${content.thankYouPageTitle} — ${config.name}`}
-  noindex={true}
->
-  <div class="max-w-lg mx-auto px-5 py-12 sm:py-20 text-center">
-    <!-- Success icon -->
-    <div
-      class="w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-xl animate-spring"
-      style="background: var(--clr-surface); border: 4px solid color-mix(in srgb, var(--clr-primary) 10%, white); color: var(--clr-primary)"
-    >
-      <Icon name="heroicons:check-circle" class="w-12 h-12" />
-    </div>
-
-    <h1 class="text-3xl font-black mb-3 tracking-tight" style="color: var(--clr-text)">
-      {content.thankYouTitle}
-    </h1>
-    <p class="font-bold text-[1.0625rem] mb-10 text-balance px-4" style="color: var(--clr-text-2)">
-      {content.thankYouSubtitle}
-    </p>
-
-    <!-- Order card (Ticket style) -->
-    <div class="relative rounded-[2rem] border border-black/[.03] shadow-lg p-8 mb-10 text-start overflow-hidden" style="background: var(--clr-surface)">
-      <div class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[var(--clr-bg)] rounded-full border-r border-black/[.03]"></div>
-      <div class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[var(--clr-bg)] rounded-full border-l border-black/[.03]"></div>
-
-      <div class="flex items-center justify-between pb-6 border-b border-dashed mb-6" style="border-color: var(--clr-border)">
-        <span class="text-[0.6875rem] font-black uppercase tracking-[0.2em]" style="color: var(--clr-text-2)">
-          {content.orderNumberLabel}
-        </span>
-        <span
-          class="font-black text-xl tracking-wider"
-          style="color: var(--clr-primary)"
-        >
-          {orderNumber}
-        </span>
+<!DOCTYPE html>
+<html lang={isRTL ? "ar" : "en"} dir={isRTL ? "rtl" : "ltr"}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{content.thankYouPageTitle} — {config.name}</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen flex items-center justify-center" style="background: var(--clr-bg); color: var(--clr-text);">
+    <div class="max-w-lg mx-auto px-5 py-12 sm:py-20 text-center w-full">
+      <!-- Success icon -->
+      <div
+        class="w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-xl animate-spring"
+        style="background: var(--clr-surface); border: 4px solid color-mix(in srgb, var(--clr-primary) 10%, white); color: var(--clr-primary)"
+      >
+        <Icon name="heroicons:check-circle" class="w-12 h-12" />
       </div>
 
-      {totalFormatted && (
-        <div class="flex items-center justify-between mb-6">
-          <span class="text-sm font-bold" style="color: var(--clr-text-2)">{content.totalAmountLabel}</span>
-          <span class="font-black text-2xl tracking-tight" style="color: var(--clr-text)">
-            {totalFormatted} <span class="text-sm opacity-60 font-bold tracking-tighter uppercase">{config.currencySymbol}</span>
+      <h1 class="text-3xl font-black mb-3 tracking-tight" style="color: var(--clr-text)">
+        {content.thankYouTitle}
+      </h1>
+      <p class="font-bold text-[1.0625rem] mb-10 text-balance px-4" style="color: var(--clr-text-2)">
+        {content.thankYouSubtitle}
+      </p>
+
+      <!-- Order card (Ticket style) -->
+      <div class="relative rounded-[2rem] border border-black/[.03] shadow-lg p-8 mb-10 text-start overflow-hidden" style="background: var(--clr-surface)">
+        <div class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[var(--clr-bg)] rounded-full border-r border-black/[.03]"></div>
+        <div class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[var(--clr-bg)] rounded-full border-l border-black/[.03]"></div>
+
+        <div class="flex items-center justify-between pb-6 border-b border-dashed mb-6" style="border-color: var(--clr-border)">
+          <span class="text-[0.6875rem] font-black uppercase tracking-[0.2em]" style="color: var(--clr-text-2)">
+            {content.orderNumberLabel}
+          </span>
+          <span
+            class="font-black text-xl tracking-wider"
+            style="color: var(--clr-primary)"
+          >
+            {orderNumber}
           </span>
         </div>
-      )}
 
-      {/* WhatsApp inline button for thank-you page */}
-      {config.whatsapp && (
-        <a
-          href={`${config.whatsapp.href}?text=${encodeURIComponent(
-            ((config.whatsapp.prefillThankYou || content.waPrefillThankYouDefault) || "")
-              .replace(/\{store\}/gi, config.name)
-              .replace(/\{order\}/gi, orderNumber)
-          )}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 rounded-2xl font-bold text-sm tracking-tight transition-all active:scale-[0.98] mb-6"
-          style={`background: ${config.whatsapp.accent === 'primary' ? 'var(--clr-primary)' : '#25D366'}; color: white; box-shadow: var(--shadow-sm);`}
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-          </svg>
-          <span>{config.whatsapp.thankYouButtonLabel || content.waThankYouButtonDefault}</span>
-        </a>
-      )}
-
-
-      <div class="p-4 rounded-2xl border" style="background: var(--clr-surface-alt); border-color: var(--clr-border)">
-        <p class="text-[0.8125rem] font-black leading-relaxed flex items-center gap-2" style="color: var(--clr-text-2)">
-          <Icon name="heroicons:credit-card" class="w-5 h-5 shrink-0 text-primary" />
-          {content.codNote}
-        </p>
-      </div>
-    </div>
-
-    <!-- Steps -->
-    <div class="grid grid-cols-3 gap-3 mb-12">
-      {steps.map((step) => (
-        <div class="flex flex-col items-center gap-2">
-          <div
-            class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border border-black/[.03] text-primary"
-            style="background: var(--clr-surface)"
-          >
-            <Icon name={step.icon} class="w-5 h-5" />
+        {totalFormatted && (
+          <div class="flex items-center justify-between mb-6">
+            <span class="text-sm font-bold" style="color: var(--clr-text-2)">{content.totalAmountLabel}</span>
+            <span class="font-black text-2xl tracking-tight" style="color: var(--clr-text)">
+              {totalFormatted} <span class="text-sm opacity-60 font-bold tracking-tighter uppercase">{config.currencySymbol}</span>
+            </span>
           </div>
-          <p class="text-[0.75rem] font-black leading-tight" style="color: var(--clr-text)">{step.title}</p>
-          <p class="text-[0.625rem] font-bold" style="color: var(--clr-text-2)">{step.sub}</p>
+        )}
+
+        <div class="p-4 rounded-2xl border" style="background: var(--clr-surface-alt); border-color: var(--clr-border)">
+          <p class="text-[0.8125rem] font-black leading-relaxed flex items-center gap-2" style="color: var(--clr-text-2)">
+            <Icon name="heroicons:credit-card" class="w-5 h-5 shrink-0 text-primary" />
+            {content.codNote}
+          </p>
         </div>
-      ))}
+      </div>
+
+      <!-- Steps -->
+      <div class="grid grid-cols-3 gap-3 mb-12">
+        {steps.map((step) => (
+          <div class="flex flex-col items-center gap-2">
+            <div
+              class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border border-black/[.03] text-primary"
+              style="background: var(--clr-surface)"
+            >
+              <Icon name={step.icon} class="w-5 h-5" />
+            </div>
+            <p class="text-[0.75rem] font-black leading-tight" style="color: var(--clr-text)">{step.title}</p>
+            <p class="text-[0.625rem] font-bold" style="color: var(--clr-text-2)">{step.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <!-- Back to Home Button -->
+      <a
+        href="/"
+        class="btn-primary !h-[3.75rem] !text-[1rem] active:scale-95 shadow-xl shadow-[var(--clr-primary)]/20"
+      >
+        {content.backToStore}
+        <Icon name="heroicons:arrow-right" class:list={["w-5 h-5", isRTL ? 'rotate-180' : '']} />
+      </a>
     </div>
 
-    <a
-      href="/"
-      class="btn-primary !h-[3.75rem] !text-[1rem] active:scale-95 shadow-xl shadow-[var(--clr-primary)]/20"
+    {pixelId && checkoutEvent && (
+      <script type="text/javascript" set:html={`
+    (function() {
+      if (typeof fbq !== 'function') return;
+      var eventId = ${JSON.stringify(orderId)};
+      if (!eventId) return;
+      var total   = ${JSON.stringify(totalNum)};
+      var eventName = ${JSON.stringify(checkoutEvent)};
+      fbq('trackSingle', ${JSON.stringify(pixelId)}, eventName, total ? { value: total, currency: 'DZD' } : {}, { eventID: eventId });
+    })();
+      `} />
+    )}
+
+    <script
+      is:inline
+      define:vars={{ orderNumber, orderId }}
     >
-      {content.backToStore}
-      <Icon name="heroicons:arrow-right" class:list={["w-5 h-5", isRTL ? 'rotate-180' : '']} />
-    </a>
-  </div>
-</StoreLayout>
+      (function () {
+        try {
+          var sessionId = sessionStorage.getItem("cod_session_id");
+          if (!sessionId) return;
+          sessionStorage.removeItem("cod_session_id");
+          fetch("/api/abandoned/convert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: sessionId,
+              orderId: orderId,
+              orderNumber: orderNumber,
+            }),
+            keepalive: true,
+          }).catch(function () {});
+        } catch (e) {}
+      })();
+    </script>
 
-{pixelId && checkoutEvent && (
-  <script type="text/javascript" set:html={`
-(function() {
-  if (typeof fbq !== 'function') return;
-  var eventId = ${JSON.stringify(orderId)};
-  // No orderId means no server mirror to deduplicate against — firing
-  // with a different id would double-count the conversion. Skip instead.
-  if (!eventId) return;
-  var total   = ${JSON.stringify(totalNum)};
-  var eventName = ${JSON.stringify(checkoutEvent)};
-  // trackSingle, not track: this sale belongs to one pixel — the one the
-  // Conversions API will mirror it to. 'track' sends to every pixel on the
-  // page, so a second one initialised here later would silently report the
-  // same sale twice, into an ad account that has no server mirror behind it.
-  fbq('trackSingle', ${JSON.stringify(pixelId)}, eventName, total ? { value: total, currency: 'DZD' } : {}, { eventID: eventId });
-})();
-  `} />
-)}
-
-<script
-  is:inline
-  define:vars={{ orderNumber, orderId }}
->
-  // Mark the abandoned-checkout session as converted (fire-and-forget).
-  // The order POST redirects here (PRG), so the conversion signal fires on
-  // the thank-you page — sessionStorage survives the redirect. keepalive
-  // lets the request outlive the page if the user navigates on immediately.
-  (function () {
-    try {
-      var sessionId = sessionStorage.getItem("cod_session_id");
-      if (!sessionId) return;
-      sessionStorage.removeItem("cod_session_id");
-      fetch("/api/abandoned/convert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          orderId: orderId,
-          orderNumber: orderNumber,
-        }),
-        keepalive: true,
-      }).catch(function () {});
-    } catch (e) {
-      // Non-critical — conversion tracking must never break the thank-you page
-    }
-  })();
-</script>
-
-<!-- The order is placed, so the basket that produced it is done. Cleared here
-     rather than at submit time: this page is only reached after the server
-     accepted the order, so a failed submission never loses the shopper's cart. -->
-<script>
-  import { clearCart } from "@/theme/scripts/cart";
-  clearCart();
-</script>
+    <script>
+      import { clearCart } from "@/theme/scripts/cart";
+      clearCart();
+    </script>
+  </body>
+</html>
