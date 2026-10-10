@@ -4,93 +4,254 @@ import OrderForm from "@/theme/components/order/OrderForm.astro";
 import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
 import { getStoreContext } from "@/theme/config/store";
 import { fetchLandingPageBySlug } from "@/core/api/client";
-import { actions, isInputError } from "astro:actions";
+import { actions } from "astro:actions";
+import { isInputError } from "astro:actions";
 
 const storeCtx = await getStoreContext();
-const { config, content: copy, isRTL } = storeCtx;
+const { config, content, isRTL } = storeCtx;
+
 const lp = await fetchLandingPageBySlug("lacoste");
 const product = lp?.product;
-const cur = config.currencySymbol;
-const variant = product?.hasVariants ? (product.variants.find((v: any) => v.isDefault) ?? product.variants[0]) : null;
-const basePrice = variant?.price ?? product?.price ?? 0;
-const comparePrice = variant?.compareAtPrice ?? product?.compareAtPrice ?? null;
-const isOutOfStock = product?.trackInventory && product.inventory === 0;
+
+const cur = config?.currencySymbol;
+const defaultVariant = product?.hasVariants
+  ? (product?.variants?.find((v: any) => v?.isDefault) ?? product?.variants?.[0] ?? null)
+  : null;
+const basePrice = defaultVariant?.price ?? product?.price ?? 0;
+const comparePrice = defaultVariant?.compareAtPrice ?? product?.compareAtPrice ?? null;
+const isOutOfStock = product?.trackInventory && product?.inventory === 0;
+const defaultVariantId = defaultVariant?.id ?? null;
+
+// ===== متغيرات تقديمية فقط (ديزاين) =====
+const productName = product?.name ?? "Bracelet Metropole";
+const headline = "أناقة تكمل إطلالتك";
+const hasDiscount = Number(comparePrice) > Number(basePrice) && Number(basePrice) > 0;
+const discountPercent = hasDiscount
+  ? Math.round((1 - Number(basePrice) / Number(comparePrice)) * 100)
+  : null;
+
+// الصور: كنقراو product.images ولا lp.images، وكنقبلو strings ولا objects فيها url / src / image
+const rawImages: any = product?.images ?? lp?.images ?? [];
+const productImages: string[] = (Array.isArray(rawImages) ? rawImages : [])
+  .map((img: any) => (typeof img === "string" ? img : (img?.url ?? img?.src ?? img?.image ?? "")))
+  .filter((src: any) => typeof src === "string" && src.length > 0);
+const heroImage = productImages[0] ?? null;
+const galleryImages = productImages.slice(0, 4);
+
+const features = [
+  {
+    title: "تصميم أيقوني",
+    text: "الوصلات على شكل H والوصلات الوسطى بنقشة petit piqué، روح Lacoste في كل تفصيلة.",
+  },
+  {
+    title: "قياس واضح: 19 سم",
+    text: "قياس الدائرة الداخلية 19 سم. إلا احتجت تقصيرو، تنجم تديرو عند حرفي ساعات ولا مجوهرات.",
+  },
+  {
+    title: "فيرموار ديبلوانت",
+    text: "قفل سهل وآمن يتفتح ويتقفل بسرعة، مناسب للاستعمال اليومي.",
+  },
+  {
+    title: "مواد هيبوألرجينية",
+    text: "مناسب حتى للبشرة الحساسة، وما يسببش حساسية في الغالب.",
+  },
+];
+
+// معالجة إرسال الطلبية
 const result = Astro.getActionResult(actions.placeOrder);
-if (result?.data?.orderNumber) return Astro.redirect(`/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`, 303);
+if (result?.data?.orderNumber) {
+  return Astro.redirect(
+    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
+    303,
+  );
+}
 const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
 const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
-const gallery: string[] = ((product as any)?.images ?? (lp as any)?.images ?? []).map((img: any) => typeof img === "string" ? img : (img?.url ?? img?.src ?? img?.image ?? null)).filter(Boolean);
-const hasDiscount = comparePrice && Number(comparePrice) > Number(basePrice);
-const discountPct = hasDiscount ? Math.round((Number(comparePrice) - Number(basePrice)) / Number(comparePrice) * 100) : 0;
-const details = [
-  { title:"ستايل يجي معاك كل يوم", text:"سوار بتصميم مرتب يكمّل إطلالتك اليومية والمناسبات." },
-  { title:"شوف التفاصيل قبل القرار", text:"تصفّح صور المنتج وتأكد من المواصفات والخيارات المتاحة." },
-  { title:"طلب بسيط وواضح", text:"عمّر معلوماتك، نأكدوا معاك الطلب، والتوصيل حسب الخيارات المتوفرة." }
-];
 ---
-<StoreLayout config={config} content={copy} title={lp?.metaTitle || product?.name || "سوار معدني"} marketing={true}>
-{product && <div class="lacoste" dir="rtl">
-  <div id="page-data" class="sr-only"
-    data-variants={JSON.stringify(product.variants ?? [])} data-base-price={basePrice} data-compare-price={comparePrice ?? ""}
-    data-cur={cur} data-is-rtl={isRTL ? "1" : "0"} data-shipping-label={copy.shippingLabel}
-    data-shipping-calc={copy.shippingCalculated} data-shipping-free={copy.shippingFree} data-total-label={copy.totalLabel}
-    data-commune-placeholder={copy.formCommunePlaceholder} data-commune-loading={copy.formCommuneLoading}
-    data-commune-disabled={copy.formCommuneDisabled} data-offers={JSON.stringify(product.offers ?? [])}
-    data-track-inventory={product.trackInventory ? "1" : "0"} data-out-of-stock-label={copy.outOfStock}
-    data-qty-max-stock={copy.qtyMaxStock} data-inventory={String(product.inventory ?? 0)}
-    data-pixel-id={lp.tracking?.pixelId ?? config.pixelId ?? ""} data-phone-invalid={copy.formPhoneInvalid}
-    data-product-id={product.id} data-product-name={product.name} />
-  <ShippingIsland server:defer />
-  <div class="announcement"><span></span> تفاصيل مختارة. ستايل يبقى. <i>•</i> الدفع عند الاستلام حسب التوفر</div>
-  <section class="hero wrap">
-    <div class="hero-copy">
-      <h1>تفصيل صغير.<br/><em>فرق كبير.</em></h1>
-      <p class="intro">سوار معدني يكمّل حضورك من غير مبالغة. اختار ستايلك وخلي التفاصيل تهدر.</p>
-      <div class="price"><strong>{basePrice} <small>{cur}</small></strong>{hasDiscount && <del>{comparePrice} {cur}</del>}{hasDiscount && <b>-{discountPct}%</b>}</div>
-      <a class="primary" href="#order-section-wrapper">اطلب السوار <span>↙</span></a>
-      <p class="micro">السعر والخيارات النهائية يبانوا في استمارة الطلب.</p>
+
+<StoreLayout config={config} content={content} title={lp?.metaTitle || "عرض خاص"} marketing={true}>
+  {product && (
+    <div class="min-h-screen bg-stone-50 pb-28 md:pb-16" dir={isRTL ? "rtl" : "ltr"}>
+
+      <!-- جسر البيانات اللازم للسكريبتات والولايات -->
+      <div
+        id="page-data"
+        class="sr-only"
+        data-variants={JSON.stringify(product?.variants ?? [])}
+        data-base-price={basePrice}
+        data-compare-price={comparePrice ?? ""}
+        data-cur={cur}
+        data-is-rtl={isRTL ? "1" : "0"}
+        data-shipping-label={content?.shippingLabel}
+        data-shipping-calc={content?.shippingCalculated}
+        data-shipping-free={content?.shippingFree}
+        data-total-label={content?.totalLabel}
+        data-commune-placeholder={content?.formCommunePlaceholder}
+        data-commune-loading={content?.formCommuneLoading}
+        data-commune-disabled={content?.formCommuneDisabled}
+        data-offers={JSON.stringify(product?.offers ?? [])}
+        data-track-inventory={product?.trackInventory ? "1" : "0"}
+        data-out-of-stock-label={content?.outOfStock}
+        data-qty-max-stock={content?.qtyMaxStock}
+        data-inventory={String(product?.inventory ?? 0)}
+        data-pixel-id={lp?.tracking?.pixelId ?? config?.pixelId ?? ""}
+        data-phone-invalid={content?.formPhoneInvalid}
+        data-product-id={product?.id}
+        data-product-name={product?.name}
+      />
+
+      <ShippingIsland server:defer />
+
+      <!-- ===== الهيرو: الصورة + المعلومات + CTA ===== -->
+      <header class="bg-white">
+        <div class="mx-auto max-w-5xl md:grid md:grid-cols-2 md:items-center md:gap-10 md:px-6 md:py-12">
+
+          <!-- الصور -->
+          <div class="relative">
+            <div class="aspect-square w-full overflow-hidden bg-stone-100 md:rounded-3xl">
+              {heroImage ? (
+                <img
+                  src={heroImage}
+                  alt={productName}
+                  class="h-full w-full object-cover"
+                  loading="eager"
+                  fetchpriority="high"
+                />
+              ) : (
+                <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-stone-200 to-stone-100">
+                  <span class="text-7xl font-black text-stone-400">L</span>
+                </div>
+              )}
+            </div>
+
+            {discountPercent !== null && discountPercent > 0 && (
+              <span class="absolute start-4 top-4 rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white shadow">
+                -{discountPercent}%
+              </span>
+            )}
+
+            {galleryImages.length > 1 && (
+              <div class="mt-3 grid grid-cols-4 gap-2 px-4 md:px-0">
+                {galleryImages.map((src) => (
+                  <div class="aspect-square overflow-hidden rounded-xl bg-stone-100 ring-1 ring-stone-200">
+                    <img src={src} alt="" loading="lazy" class="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <!-- المعلومات -->
+          <div class="px-5 pb-6 pt-6 md:px-0 md:pt-0">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-red-600">Lacoste · Collection</p>
+            <h1 class="mt-2 text-3xl font-black leading-tight text-stone-900 md:text-5xl">{headline}</h1>
+            <p class="mt-2 text-lg font-semibold text-stone-700">{productName}</p>
+            <p class="mt-3 leading-relaxed text-stone-600">
+              روح Lacoste الأيقونية تتجسد بأناقة في سوار Metropole: وصلات على شكل H ووصلات مركزية بنقشة petit piqué. يكمل أي لبسة يومية ولا رسمية.
+            </p>
+
+            <div class="mt-5 flex items-end gap-3">
+              <span class="text-3xl font-black text-stone-900">
+                {basePrice} <span class="text-lg font-bold">{cur}</span>
+              </span>
+              {hasDiscount && (
+                <span class="pb-1 text-base text-stone-400 line-through">
+                  {comparePrice} {cur}
+                </span>
+              )}
+            </div>
+
+            <a
+              href="#order-section-wrapper"
+              class="mt-6 flex w-full items-center justify-center rounded-2xl bg-stone-900 px-6 py-4 text-lg font-extrabold text-white shadow-lg transition hover:bg-stone-800 active:scale-[0.99]"
+              aria-disabled={isOutOfStock ? "true" : undefined}
+            >
+              {isOutOfStock ? (content?.outOfStock || "نفذ من المخزون") : "اطلب دابا"}
+            </a>
+
+            <ul class="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-stone-700">
+              <li class="rounded-xl bg-stone-100 px-2 py-3">الدفع عند الاستلام</li>
+              <li class="rounded-xl bg-stone-100 px-2 py-3">توصيل لـ 69 ولاية</li>
+              <li class="rounded-xl bg-stone-100 px-2 py-3">طلب سهل وسريع</li>
+            </ul>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- ===== المميزات ===== -->
+      <section class="mx-auto max-w-5xl px-5 py-12 md:px-6">
+        <h2 class="text-2xl font-black text-stone-900 md:text-3xl">علاش تختار Metropole؟</h2>
+        <ul class="mt-6 grid gap-4 md:grid-cols-2">
+          {features.map((f, i) => (
+            <li class="flex gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-200">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-900 text-sm font-bold text-white">
+                {i + 1}
+              </span>
+              <div>
+                <h3 class="font-bold text-stone-900">{f.title}</h3>
+                <p class="mt-1 text-sm leading-relaxed text-stone-600">{f.text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <!-- ===== فورمولار الطلب ===== -->
+      <div class="mx-auto max-w-xl scroll-mt-6 px-4 pb-10 md:px-6" id="order-section-wrapper">
+        <div class="rounded-2xl border border-stone-100 bg-white p-6 shadow-xl">
+          <h2 class="text-center text-2xl font-black text-stone-900">اطلب دابا</h2>
+          <p class="mb-6 mt-2 text-center text-sm text-stone-600">
+            املا المعلومات تحت، والخلاص يكون عند الاستلام.
+          </p>
+          <OrderForm
+            product={product}
+            content={content}
+            fieldErrors={fieldErrors}
+            serverError={serverError}
+            basePrice={basePrice}
+            defaultVariant={defaultVariant ?? null}
+            cur={cur}
+            isRTL={isRTL}
+            offers={product?.offers}
+            defaultVariantId={defaultVariantId}
+            isOutOfStock={isOutOfStock}
+            otpEnabled={config?.otpEnabled === true}
+            turnstileEnabled={config?.turnstileEnabled === true}
+            turnstileSiteKey={config?.turnstileSiteKey ?? null}
+            pages={config?.pages ?? []}
+            formPolicy={config?.checkoutForm}
+            landingPageSlug={lp?.slug}
+          />
+        </div>
+      </div>
+
+      <!-- ===== شريط CTA ثابت للموبايل ===== -->
+      <div
+        class="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 p-3 backdrop-blur md:hidden"
+        style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));"
+      >
+        <a
+          href="#order-section-wrapper"
+          class="flex items-center justify-between rounded-2xl bg-stone-900 px-5 py-3 text-white shadow-lg"
+        >
+          <span class="font-extrabold">اطلب دابا</span>
+          <span class="font-black">{basePrice} {cur}</span>
+        </a>
+      </div>
+
     </div>
-    <div class="product-stage">
-      <div class="stage-label"><span>PRODUCT STUDY</span><span>NO. 01</span></div>
-      {gallery[0] ? <img src={gallery[0]} alt={product.name} width="900" height="900" fetchpriority="high" loading="eager"/> : <div class="no-image">صورة المنتج غير متوفرة حالياً</div>}
-      <div class="stage-foot"><span>EVERYDAY SIGNATURE</span><span>L / EDITION</span></div><div class="seal">L<span>STYLE</span></div>
+  )}
+
+  {!product && (
+    <div class="flex flex-col items-center justify-center px-6 py-24 text-center">
+      <h1 class="text-2xl font-black text-red-600">عذراً، لم يتم العثور على صفحة الهبوط أو أن الslug خاطئ.</h1>
     </div>
-  </section>
-  <section class="assurances"><div><b>↗</b><p><strong>سعر واضح</strong><small>قبل تأكيد الطلب</small></p></div><div><b>⌁</b><p><strong>تأكيد مباشر</strong><small>نتواصلوا معاك</small></p></div><div><b>＋</b><p><strong>تفاصيل التوصيل</strong><small>في الاستمارة</small></p></div></section>
-  <section class="manifesto wrap"><div><h2>ستايل بسيط،<br/><em>حضور محسوب.</em></h2></div><p>الإكسسوار المليح ما يغطّيش على ستايلك؛ يكملو. شوف صور السوار والتفاصيل المتوفرة، وتأكد من المواصفات قبل ما تثبّت طلبك.</p></section>
-  {gallery.length > 1 && <section class="gallery wrap"><div class="section-top"><h2>التفاصيل، من قريب.</h2></div><div class="gallery-grid">{gallery.slice(1,4).map((src,i)=><figure class:list={["gallery-item",i===1 && "gallery-tall"]}><img src={src} alt={`${product.name} — صورة ${i+2}`} loading="lazy" decoding="async"/><figcaption>DETAIL / 0{i+2}<span>↗</span></figcaption></figure>)}</div></section>}
-  <section class="details wrap"><div class="details-title"><h2>اختار على<br/><em>بيّنة.</em></h2><p>راجع صور المنتج والسعر والخيارات المتاحة قبل تأكيد الطلب.</p></div><div class="detail-list">{details.map(d=><article><div><h3>{d.title}</h3><p>{d.text}</p></div><b aria-hidden="true">↗</b></article>)}</div></section>
-  <section class="order-band"><div class="wrap band-inner"><div><h2>جاهز تزيد<br/><em>التفصيل الأخير؟</em></h2><p>عمّر معلوماتك لتحت. تفاصيل الطلب والتوصيل تتأكد معاك.</p></div><div class="band-price"><small>السعر الحالي</small><strong>{basePrice} <small>{cur}</small></strong>{hasDiscount && <del>{comparePrice} {cur}</del>}<a href="#order-section-wrapper">نروح للطلب ↓</a></div></div></section>
-  <section class="checkout wrap" id="order-section-wrapper"><div class="checkout-title"><h2>كمّل طلبك.</h2><p>دخل معلومات صحيحة باش نقدروا نأكدوا معاك الطلب والتوصيل.</p></div><div class="form-card"><OrderForm product={product} content={copy} fieldErrors={fieldErrors} serverError={serverError} basePrice={basePrice} defaultVariant={variant ?? null} cur={cur} isRTL={isRTL} offers={product.offers} defaultVariantId={variant?.id ?? null} isOutOfStock={isOutOfStock} otpEnabled={config.otpEnabled === true} turnstileEnabled={config.turnstileEnabled === true} turnstileSiteKey={config.turnstileSiteKey ?? null} pages={config.pages ?? []} formPolicy={config.checkoutForm} landingPageSlug={lp.slug}/></div><p class="form-note">تأكد من رقم الهاتف والعنوان قبل إرسال الطلب.</p></section>
-  <footer class="footer wrap"><span class="logo">L<span>.</span></span><span>{product.name}</span><a href="#order-section-wrapper">للأعلى ↑</a></footer>
-  <div class="mobile-cta"><div><small>السعر الحالي</small><strong>{basePrice} {cur}</strong></div><a href="#order-section-wrapper">اطلب الآن <span>↙</span></a></div>
-</div>}
-{!product && <div class="empty" dir="rtl"><h1>المنتج غير متوفر حالياً</h1><p>راجع صفحة الهبوط بالـ slug lacoste وإعدادات المنتج.</p></div>}
+  )}
 </StoreLayout>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&display=swap');
-:global(html){scroll-behavior:smooth;scroll-padding-top:22px;scrollbar-color:#718b77 #e9ede6}
-:global(body){caret-color:#24523b}
-:global(::selection){background:#d5ef7a;color:#14251b}
-:global(.lacoste a:focus-visible),:global(.lacoste button:focus-visible),:global(.lacoste input:focus-visible),:global(.lacoste select:focus-visible),:global(.lacoste textarea:focus-visible),:global(.lacoste [tabindex]:focus-visible){outline:3px solid #6b861b;outline-offset:4px}
-.lacoste{--ink:#14251b;--green:#24523b;--muted:#52695a;--paper:#e9ede6;--line:#cbd5ca;--acid:#d5ef7a;background:var(--paper);color:var(--ink);font-family:'Tajawal','DM Sans',sans-serif;padding-bottom:86px;overflow:hidden}
-.wrap{width:min(1160px,calc(100% - 48px));margin-inline:auto}.announcement{background:#142a1e;color:#f4f7ef;min-height:40px;display:flex;justify-content:center;align-items:center;gap:10px;padding:9px 14px;font-size:10px;letter-spacing:.05em;text-align:center}.announcement span{width:6px;height:6px;border-radius:50%;background:var(--acid)}.announcement i{font-style:normal;opacity:.5}
-.kicker{display:none}h1,h2,h3,p,figure{margin-top:0}.hero{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(35px,7vw,100px);align-items:center;padding-block:clamp(48px,8vw,108px) 75px}.hero h1,.manifesto h2,.details-title h2,.order-band h2{font:800 clamp(48px,6.2vw,82px)/1.12 'Tajawal',sans-serif;letter-spacing:-.035em;margin:0 0 25px}.hero h1 em,h2 em{font-family:inherit;font-weight:800;font-style:normal;color:var(--green);letter-spacing:-.035em}.intro{max-width:390px;color:var(--muted);font-size:15px;line-height:1.95;margin-bottom:28px}.price{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:24px}.price strong,.band-price strong{font-size:32px;letter-spacing:-.04em}.price small,.band-price strong small{font-size:13px;font-weight:500}.price del,.band-price del{font-size:13px;color:var(--muted)}.price b{font-size:10px;background:#dce6d5;color:#315a43;padding:6px 8px}.primary{display:flex;align-items:center;justify-content:space-between;gap:38px;max-width:270px;min-height:56px;padding:0 20px;background:#142a1e;color:white;text-decoration:none;font-size:13px;font-weight:700;transition:background .2s,transform .2s}.primary:hover{background:#24523b;transform:translateY(-2px)}.micro{font-size:10px;color:var(--muted);margin-top:17px}.product-stage{position:relative;background:#dbe4d6;padding:clamp(20px,4vw,48px);isolation:isolate;overflow:hidden}.product-stage:before{content:"";position:absolute;inset:13px;border:1px solid #24523b40;pointer-events:none}.stage-label,.stage-foot{position:relative;display:flex;justify-content:space-between;color:#647265;font-size:9px;letter-spacing:.14em}.product-stage img{position:relative;display:block;width:100%;aspect-ratio:1;object-fit:contain;mix-blend-mode:multiply;animation:product-arrive .85s cubic-bezier(.16,1,.3,1) both}.stage-foot{border-top:1px solid #c8d1c5;padding-top:13px}.seal{position:absolute;right:-18px;bottom:52px;width:70px;height:70px;border-radius:50%;background:#d5ef7a;color:#14251b;display:grid;place-content:center;text-align:center;font:28px Georgia,serif;box-shadow:0 10px 25px #1d35241f}.seal span{font:7px 'DM Sans',sans-serif;letter-spacing:.15em;margin-top:7px}.no-image{aspect-ratio:1;display:grid;place-content:center;color:var(--muted);font-size:12px}
-.assurances{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:26px max(24px,calc((100% - 1080px)/2));background:#dfe6dc;border-block:1px solid var(--line)}.assurances>div{display:flex;align-items:center;justify-content:center;gap:12px}.assurances b{font:26px Georgia,serif;color:var(--green)}.assurances p{margin:0;display:grid;gap:5px}.assurances strong{font-size:12px}.assurances small{font-size:10px;color:var(--muted)}
-.manifesto{display:grid;grid-template-columns:1fr .7fr;gap:70px;align-items:end;padding-block:clamp(78px,11vw,145px)}.manifesto h2,.details-title h2{font-size:clamp(42px,5vw,66px);margin:0}.manifesto>p{max-width:390px;color:var(--muted);line-height:2;font-size:14px;margin:0 0 7px}.gallery{padding-bottom:clamp(80px,10vw,130px)}.section-top{margin-bottom:28px}.section-top .kicker{margin-bottom:15px}.section-top h2{font:600 clamp(30px,4vw,46px)/1.1 'Manrope',sans-serif;letter-spacing:-.05em;margin:0}.gallery-grid{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:14px;align-items:start}.gallery-item{margin:0;background:#e3e7dc;padding:12px}.gallery-tall{margin-top:42px}.gallery-item img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;mix-blend-mode:multiply}.gallery-item figcaption{display:flex;justify-content:space-between;padding:13px 3px 3px;color:#68746a;font-size:9px;letter-spacing:.12em}
-.details{display:grid;grid-template-columns:.75fr 1.25fr;gap:clamp(40px,8vw,120px);padding-bottom:clamp(90px,12vw,150px)}.details-title>p:last-child{max-width:290px;color:var(--muted);font-size:13px;line-height:1.9;margin-top:25px}.detail-list article{display:grid;grid-template-columns:1fr 20px;gap:18px;border-top:1px solid var(--line);padding:26px 0}.detail-list h3{font-size:16px;margin:0 0 8px}.detail-list p{font-size:12px;color:var(--muted);line-height:1.9;margin:0}.detail-list article>b{font-weight:400;color:var(--green)}
-.order-band{background:#142a1e;color:#f3f7ef;padding-block:clamp(55px,8vw,95px)}.band-inner{display:flex;align-items:end;justify-content:space-between;gap:40px}.order-band .kicker{display:none}.order-band h2{font-size:clamp(42px,5vw,66px);margin:0}.order-band h2 em{color:var(--acid)}.order-band .band-inner>div:first-child>p:last-child{color:#d0d9ce;max-width:420px;font-size:13px;line-height:1.9;margin:22px 0 0}.band-price{min-width:200px;border:1px solid #ffffff40;padding:23px;background:#1c3929;display:flex;flex-direction:column;align-items:flex-start;gap:8px}.band-price>small{font-size:10px;color:#c8d4c7}.band-price strong{font-size:34px}.band-price a{border-top:1px solid #ffffff45;padding-top:15px;margin-top:10px;width:100%;color:white;text-decoration:none;font-size:12px}
-.checkout{display:grid;grid-template-columns:.7fr 1.3fr;gap:45px;padding-block:clamp(70px,9vw,110px) 25px;align-items:start}.checkout-title{position:sticky;top:30px}.checkout-title h2{font:800 clamp(40px,4.2vw,58px)/1.1 'Tajawal',sans-serif;letter-spacing:-.035em;margin:0 0 15px}.checkout-title>p:last-child,.form-note{font-size:12px;color:var(--muted);line-height:1.9}.form-card{background:#f8faf5;border:1px solid #cbd5ca;padding:clamp(18px,3vw,32px);box-shadow:0 18px 48px #14251b0d}.form-note{grid-column:2;margin:0;font-size:10px}.footer{border-top:1px solid var(--line);margin-top:55px;padding-top:23px;display:flex;align-items:center;gap:20px;color:var(--muted);font-size:10px}.logo{font:28px Georgia,serif;color:var(--green)}.logo span{color:#a0b59a}.footer a{margin-inline-start:auto;color:inherit;text-decoration:none}.mobile-cta{display:none}.empty{padding:90px 24px;text-align:center;background:#f3f3ed;color:#17251c}
-@media(max-width:760px){.lacoste{padding-bottom:105px}.wrap{width:calc(100% - 36px)}.announcement{font-size:9px;gap:7px}.hero{grid-template-columns:1fr;gap:30px;padding-block:42px 48px}.product-stage img{max-height:390px}.seal{width:60px;height:60px;right:-10px;bottom:48px;font-size:23px}.hero h1{font-size:clamp(48px,13vw,68px)}.intro{font-size:14px}.assurances{padding:20px 12px;gap:8px}.assurances>div{flex-direction:column;text-align:center;gap:6px}.assurances b{font-size:22px}.assurances strong{font-size:10px}.assurances small{font-size:9px;line-height:1.5}.manifesto{grid-template-columns:1fr;gap:27px;padding-block:75px}.gallery-grid{grid-template-columns:1fr 1fr;gap:10px}.gallery-item{padding:8px}.gallery-tall{margin-top:24px}.gallery-item:last-child{display:none}.details{grid-template-columns:1fr;gap:27px;padding-bottom:80px}.details-title>p:last-child{max-width:390px}.band-inner{align-items:stretch;flex-direction:column;gap:28px}.band-price{min-width:0}.checkout{grid-template-columns:1fr;gap:22px;padding-top:65px}.checkout-title{position:static}.form-note{grid-column:1}.footer{margin-top:40px}.mobile-cta{position:fixed;z-index:40;inset-inline:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px max(11px,env(safe-area-inset-bottom));background:#e9ede6f5;border-top:1px solid #cbd5ca;backdrop-filter:blur(14px);transition:transform .25s}.mobile-cta>div{display:grid;gap:3px}.mobile-cta small{font-size:9px;color:var(--muted)}.mobile-cta strong{font-size:17px}.mobile-cta a{display:flex;align-items:center;justify-content:space-between;gap:24px;background:#142a1e;color:white;text-decoration:none;padding:14px 17px;font-size:12px;font-weight:700;min-height:46px}.mobile-cta.is-hidden{transform:translateY(110%)}}
-@keyframes product-arrive{from{opacity:0;transform:translateY(14px) scale(.985);clip-path:inset(8% 0 0)}to{opacity:1;transform:translateY(0) scale(1);clip-path:inset(0)}}
-@media(prefers-reduced-motion:reduce){:global(html){scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
-</style>
+
+<!-- السكريبتات الأساسية -->
 <script src="../theme/scripts/product.ts"></script>
 <script src="../theme/scripts/otp-step.ts"></script>
 <script src="../theme/scripts/turnstile-field.ts"></script>
 <script src="../theme/scripts/track-abandonment.ts"></script>
-<script>
-const cta=document.querySelector<HTMLElement>(".mobile-cta");
-const order=document.getElementById("order-section-wrapper");
-if(cta&&order&&"IntersectionObserver" in window){new IntersectionObserver(([entry])=>cta.classList.toggle("is-hidden",entry.isIntersecting),{threshold:.12}).observe(order)}
-</script>
