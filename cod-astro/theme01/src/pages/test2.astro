@@ -256,9 +256,9 @@ const steps = [
 
       <!-- ═════════ شريط الثقة ═════════ -->
       <section class="bg-[#04271a] text-[#dfe9e1]">
-        <ul class="max-w-5xl mx-auto grid grid-cols-3 divide-x divide-x-reverse divide-white/10">
-          {trust.map((t) => (
-            <li class="flex flex-col items-center gap-2 px-2 py-5 text-center">
+        <ul class="max-w-5xl mx-auto grid grid-cols-3">
+          {trust.map((t, i) => (
+            <li class={`flex flex-col items-center gap-2 px-2 py-5 text-center ${i !== 0 ? 'border-r border-white/10' : ''}`}>
               <svg class="w-6 h-6 text-[#cdee5a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={icons[t.icon]} />
               <span class="text-[13px] leading-5 font-medium">{t.label}</span>
             </li>
@@ -283,10 +283,10 @@ const steps = [
                 <circle cx="120" cy="120" r="108" fill="none" stroke="#063b27" stroke-width="16" stroke-dasharray="15 5" stroke-opacity="0.9" />
                 <circle cx="120" cy="120" r="88" fill="none" stroke="#063b27" stroke-opacity="0.25" stroke-width="1" />
               </svg>
-              <div class="relative text-center">
-                <p class="mt-display text-7xl leading-none font-bold tabular-nums text-[#063b27]">19</p>
-                <p class="mt-2 text-[15px] font-medium text-[#0d2418]">سم</p>
-                <p class="text-[13px] text-[#44564b]">المحيط الداخلي</p>
+              <div class="relative text-center flex flex-col items-center justify-center">
+                <p class="mt-display text-6xl leading-none font-bold tabular-nums text-[#063b27]">19</p>
+                <p class="mt-1 text-[14px] font-medium text-[#0d2418]">سم</p>
+                <p class="text-[12px] text-[#44564b]">المحيط الداخلي</p>
               </div>
             </div>
           </div>
