@@ -2,6 +2,7 @@
 import { getStoreContext } from "@/theme/config/store";
 import { fetchOrderTracking } from "@/core/api/client";
 import { Icon } from "astro-icon/components";
+import "@/theme/styles/global.css";
 
 const orderNumber = Astro.url.searchParams.get("order") ?? "";
 const orderId = Astro.url.searchParams.get("oid") ?? "";
