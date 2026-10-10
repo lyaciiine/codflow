@@ -7,7 +7,6 @@ import "@/theme/styles/global.css";
 const orderNumber = Astro.url.searchParams.get("order") ?? "";
 const orderId = Astro.url.searchParams.get("oid") ?? "";
 
-// الوظائف الأساسية لجلب البيانات والتتبع
 const [storeCtx, tracking] = await Promise.all([
   getStoreContext(),
   fetchOrderTracking(orderId),
@@ -27,7 +26,6 @@ const pixelId = tracking?.pixelId ?? null;
 const checkoutEvent = tracking?.event ?? null;
 const totalNum = total ? parseInt(total) : null;
 
-// خطوات التوصيل
 const steps = [
   { icon: "heroicons:phone", title: content.step1Title, sub: content.step1Sub },
   { icon: "heroicons:cube",  title: content.step2Title, sub: content.step2Sub },
@@ -51,15 +49,12 @@ const steps = [
   
   <body class="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8" style="font-family: 'Cairo', sans-serif;">
     
-    <!-- كارت رئيسي أبيض بتصميم عصري -->
     <div class="max-w-md w-full bg-white rounded-[2rem] shadow-xl p-8 sm:p-10 text-center border border-gray-100">
       
-      <!-- أيقونة النجاح -->
       <div class="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100 animate-spring">
         <Icon name="heroicons:check-circle" class="w-12 h-12" />
       </div>
 
-      <!-- رسالة الشكر -->
       <h1 class="text-3xl font-extrabold mb-2 text-gray-900 tracking-tight">
         {content.thankYouTitle}
       </h1>
@@ -67,7 +62,6 @@ const steps = [
         {content.thankYouSubtitle}
       </p>
 
-      <!-- تفاصيل الطلب في مربع رمادي خفيف -->
       <div class="bg-gray-50 rounded-2xl p-5 mb-8 text-start border border-gray-100">
         <div class="flex items-center justify-between pb-4 border-b border-gray-200 border-dashed mb-4">
           <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">
@@ -88,8 +82,7 @@ const steps = [
         )}
       </div>
 
-      <!-- خطوات التوصيل -->
-      <div class="grid grid-cols-3 gap-2 mb-8">
+      <div class="grid grid-cols-3 gap-2">
         {steps.map((step) => (
           <div class="flex flex-col items-center text-center gap-1.5">
             <div class="w-10 h-10 bg-gray-50 text-gray-700 rounded-xl flex items-center justify-center shadow-sm border border-gray-100">
@@ -101,18 +94,8 @@ const steps = [
         ))}
       </div>
 
-      <!-- زر العودة -->
-      <a
-        href="/"
-        class="flex items-center justify-center gap-2 w-full bg-gray-900 text-white h-14 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-colors active:scale-95 shadow-md"
-      >
-        {content.backToStore}
-        <Icon name="heroicons:arrow-right" class:list={["w-5 h-5", isRTL ? 'rotate-180' : '']} />
-      </a>
-
     </div>
 
-    <!-- الوظائف والسكريبتات الأساسية (البيكسل، مسح السلة، الخ) -->
     {pixelId && checkoutEvent && (
       <script type="text/javascript" set:html={`
       (function() {
