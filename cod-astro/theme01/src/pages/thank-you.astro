@@ -7,7 +7,7 @@ import "@/theme/styles/global.css";
 const orderNumber = Astro.url.searchParams.get("order") ?? "";
 const orderId = Astro.url.searchParams.get("oid") ?? "";
 
-// Which pixel this ORDER belongs to, and whether a browser event fires for it.
+// الوظائف الأساسية لجلب البيانات والتتبع
 const [storeCtx, tracking] = await Promise.all([
   getStoreContext(),
   fetchOrderTracking(orderId),
@@ -27,6 +27,7 @@ const pixelId = tracking?.pixelId ?? null;
 const checkoutEvent = tracking?.event ?? null;
 const totalNum = total ? parseInt(total) : null;
 
+// خطوات التوصيل
 const steps = [
   { icon: "heroicons:phone", title: content.step1Title, sub: content.step1Sub },
   { icon: "heroicons:cube",  title: content.step2Title, sub: content.step2Sub },
@@ -41,101 +42,91 @@ const steps = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{content.thankYouPageTitle} — {config.name}</title>
     <meta name="robots" content="noindex,nofollow" />
+    
+    <!-- خط Cairo من Google Fonts باش الكتيبة تخرج شابة مباشرة -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
   </head>
-  <body class="min-h-screen flex items-center justify-center" style="background: var(--clr-bg); color: var(--clr-text);">
-    <div class="max-w-lg mx-auto px-5 py-12 sm:py-20 text-center w-full">
-      <!-- Success icon -->
-      <div
-        class="w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-xl animate-spring"
-        style="background: var(--clr-surface); border: 4px solid color-mix(in srgb, var(--clr-primary) 10%, white); color: var(--clr-primary)"
-      >
+  
+  <body class="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8" style="font-family: 'Cairo', sans-serif;">
+    
+    <!-- كارت رئيسي أبيض بتصميم عصري -->
+    <div class="max-w-md w-full bg-white rounded-[2rem] shadow-xl p-8 sm:p-10 text-center border border-gray-100">
+      
+      <!-- أيقونة النجاح -->
+      <div class="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100 animate-spring">
         <Icon name="heroicons:check-circle" class="w-12 h-12" />
       </div>
 
-      <h1 class="text-3xl font-black mb-3 tracking-tight" style="color: var(--clr-text)">
+      <!-- رسالة الشكر -->
+      <h1 class="text-3xl font-extrabold mb-2 text-gray-900 tracking-tight">
         {content.thankYouTitle}
       </h1>
-      <p class="font-bold text-[1.0625rem] mb-10 text-balance px-4" style="color: var(--clr-text-2)">
+      <p class="font-semibold text-gray-500 mb-8 px-2">
         {content.thankYouSubtitle}
       </p>
 
-      <!-- Order card (Ticket style) -->
-      <div class="relative rounded-[2rem] border border-black/[.03] shadow-lg p-8 mb-10 text-start overflow-hidden" style="background: var(--clr-surface)">
-        <div class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[var(--clr-bg)] rounded-full border-r border-black/[.03]"></div>
-        <div class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[var(--clr-bg)] rounded-full border-l border-black/[.03]"></div>
-
-        <div class="flex items-center justify-between pb-6 border-b border-dashed mb-6" style="border-color: var(--clr-border)">
-          <span class="text-[0.6875rem] font-black uppercase tracking-[0.2em]" style="color: var(--clr-text-2)">
+      <!-- تفاصيل الطلب في مربع رمادي خفيف -->
+      <div class="bg-gray-50 rounded-2xl p-5 mb-8 text-start border border-gray-100">
+        <div class="flex items-center justify-between pb-4 border-b border-gray-200 border-dashed mb-4">
+          <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">
             {content.orderNumberLabel}
           </span>
-          <span
-            class="font-black text-xl tracking-wider"
-            style="color: var(--clr-primary)"
-          >
+          <span class="font-extrabold text-lg text-gray-900 tracking-wider">
             {orderNumber}
           </span>
         </div>
 
         {totalFormatted && (
-          <div class="flex items-center justify-between mb-6">
-            <span class="text-sm font-bold" style="color: var(--clr-text-2)">{content.totalAmountLabel}</span>
-            <span class="font-black text-2xl tracking-tight" style="color: var(--clr-text)">
-              {totalFormatted} <span class="text-sm opacity-60 font-bold tracking-tighter uppercase">{config.currencySymbol}</span>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-gray-500">{content.totalAmountLabel}</span>
+            <span class="font-extrabold text-2xl text-emerald-600">
+              {totalFormatted} <span class="text-sm font-bold opacity-80 uppercase">{config.currencySymbol}</span>
             </span>
           </div>
         )}
-
-        <div class="p-4 rounded-2xl border" style="background: var(--clr-surface-alt); border-color: var(--clr-border)">
-          <p class="text-[0.8125rem] font-black leading-relaxed flex items-center gap-2" style="color: var(--clr-text-2)">
-            <Icon name="heroicons:credit-card" class="w-5 h-5 shrink-0 text-primary" />
-            {content.codNote}
-          </p>
-        </div>
       </div>
 
-      <!-- Steps -->
-      <div class="grid grid-cols-3 gap-3 mb-12">
+      <!-- خطوات التوصيل -->
+      <div class="grid grid-cols-3 gap-2 mb-8">
         {steps.map((step) => (
-          <div class="flex flex-col items-center gap-2">
-            <div
-              class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border border-black/[.03] text-primary"
-              style="background: var(--clr-surface)"
-            >
+          <div class="flex flex-col items-center text-center gap-1.5">
+            <div class="w-10 h-10 bg-gray-50 text-gray-700 rounded-xl flex items-center justify-center shadow-sm border border-gray-100">
               <Icon name={step.icon} class="w-5 h-5" />
             </div>
-            <p class="text-[0.75rem] font-black leading-tight" style="color: var(--clr-text)">{step.title}</p>
-            <p class="text-[0.625rem] font-bold" style="color: var(--clr-text-2)">{step.sub}</p>
+            <p class="text-xs font-bold text-gray-800 leading-tight">{step.title}</p>
+            <p class="text-[0.6rem] font-semibold text-gray-400">{step.sub}</p>
           </div>
         ))}
       </div>
 
-      <!-- Back to Home Button -->
+      <!-- زر العودة -->
       <a
         href="/"
-        class="btn-primary !h-[3.75rem] !text-[1rem] active:scale-95 shadow-xl shadow-[var(--clr-primary)]/20"
+        class="flex items-center justify-center gap-2 w-full bg-gray-900 text-white h-14 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-colors active:scale-95 shadow-md"
       >
         {content.backToStore}
         <Icon name="heroicons:arrow-right" class:list={["w-5 h-5", isRTL ? 'rotate-180' : '']} />
       </a>
+
     </div>
 
+    <!-- الوظائف والسكريبتات الأساسية (البيكسل، مسح السلة، الخ) -->
     {pixelId && checkoutEvent && (
       <script type="text/javascript" set:html={`
-    (function() {
-      if (typeof fbq !== 'function') return;
-      var eventId = ${JSON.stringify(orderId)};
-      if (!eventId) return;
-      var total   = ${JSON.stringify(totalNum)};
-      var eventName = ${JSON.stringify(checkoutEvent)};
-      fbq('trackSingle', ${JSON.stringify(pixelId)}, eventName, total ? { value: total, currency: 'DZD' } : {}, { eventID: eventId });
-    })();
+      (function() {
+        if (typeof fbq !== 'function') return;
+        var eventId = ${JSON.stringify(orderId)};
+        if (!eventId) return;
+        var total   = ${JSON.stringify(totalNum)};
+        var eventName = ${JSON.stringify(checkoutEvent)};
+        fbq('trackSingle', ${JSON.stringify(pixelId)}, eventName, total ? { value: total, currency: 'DZD' } : {}, { eventID: eventId });
+      })();
       `} />
     )}
 
-    <script
-      is:inline
-      define:vars={{ orderNumber, orderId }}
-    >
+    <script is:inline define:vars={{ orderNumber, orderId }}>
       (function () {
         try {
           var sessionId = sessionStorage.getItem("cod_session_id");
@@ -144,11 +135,7 @@ const steps = [
           fetch("/api/abandoned/convert", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId: sessionId,
-              orderId: orderId,
-              orderNumber: orderNumber,
-            }),
+            body: JSON.stringify({ sessionId: sessionId, orderId: orderId, orderNumber: orderNumber }),
             keepalive: true,
           }).catch(function () {});
         } catch (e) {}
