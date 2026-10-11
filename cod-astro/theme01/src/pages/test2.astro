@@ -10,7 +10,7 @@ import { isInputError } from "astro:actions";
 const storeCtx = await getStoreContext();
 const { config, content, isRTL } = storeCtx;
 
-// استدعاء صفحة الهبوط بالـ Slug الصحيح
+// استدعاء صفحة الهبوط بالـ Slug الصحيح (مثلاً: lacoste أو اسم صفحة الهبوط اللي راك دايرها في الداشبورد)
 const lp = await fetchLandingPageBySlug("lacoste"); 
 const product = lp?.product;
 
@@ -35,9 +35,10 @@ const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
 const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
 
 // ─────────────────────────────────────────────────────────────
-// متغيرات للديزاين فقط (presentational only)
+// متغيرات للديزاين فقط (presentational only) — ما تأثرش على المنطق
 // ─────────────────────────────────────────────────────────────
 
+// قراءة التصاور بطريقة دفاعية: نقبل strings أو objects فيهم url / src / image
 const toImgUrl = (img: any): string | null => {
   if (!img) return null;
   if (typeof img === "string") return img;
@@ -53,12 +54,14 @@ const gallery: string[] = imageList
   .map(toImgUrl)
   .filter((u: any): u is string => typeof u === "string" && u.length > 0);
 
+// تنسيق السعر + نسبة التخفيض
 const fmt = (n: any) => Number(n ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00A0");
 const numBase = Number(basePrice ?? 0);
 const numCompare = Number(comparePrice ?? 0);
 const discountPct =
   numCompare > numBase && numBase > 0 ? Math.round((1 - numBase / numCompare) * 100) : 0;
 
+// أيقونات SVG (stroke واحد موحّد)
 const icons: Record<string, string> = {
   truck:
     '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
@@ -106,6 +109,16 @@ const steps = [
   { n: "2", title: "نبعثولك الطلب", text: "توصيل سريع لـ 69 ولاية." },
   { n: "3", title: "تستلم وتخلص", text: "الدفع عند الاستلام فقط." },
 ];
+
+// ترتيب التصاور المتوقع: 0 فضي رئيسية | 1 فضي قريبة (القفل) | 2 أخضر رئيسية | 3 أخضر قريبة | 4 العلبة
+// إذا غيّرت الترتيب في الداشبورد، بدّل الأرقام المستعملة في pic(...) تحت.
+const pic = (i: number): string | null => gallery[i] ?? null;
+
+// ستايل خلفية "المسرح" (بدون إطار أبيض)
+const stageDark =
+  "background-color:#04271a;background-image:radial-gradient(ellipse 80% 60% at 50% 46%, #14764d 0%, #0a4a31 48%, #04271a 100%);";
+const stageLight =
+  "background:radial-gradient(ellipse 80% 60% at 50% 46%, #ffffff 0%, #eef3ee 52%, #d5e2d9 100%);";
 ---
 
 <StoreLayout config={config} content={content} title={lp?.metaTitle || "عرض خاص"} marketing={true}>
@@ -119,7 +132,7 @@ const steps = [
         href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;600;700&family=Readex+Pro:wght@300;400;500;600&display=swap"
       />
 
-      <!-- جسر البيانات -->
+      <!-- جسر البيانات اللازم للسكريبتات والولايات -->
       <div
         id="page-data"
         class="sr-only"
@@ -178,17 +191,15 @@ const steps = [
             <div class="mt-rise mt-8 flex items-end gap-4 flex-wrap" style="--d:240ms;">
               <div>
                 <p class="text-[13px] text-[#a9c2b1] mb-1">السعر</p>
-                <p class="mt-display text-[2.5rem] leading-none font-bold tabular-nums flex items-baseline gap-2">
-                  <span dir="ltr">{fmt(basePrice)}</span>
-                  <span class="text-xl font-medium text-[#c3d6c9]">{cur}</span>
+                <p class="mt-display text-[2.5rem] leading-none font-bold tabular-nums">
+                  <bdi dir="ltr">{fmt(basePrice)}</bdi> <span class="text-xl font-medium text-[#c3d6c9]">{cur}</span>
                 </p>
               </div>
               {numCompare > numBase && (
                 <div class="pb-1 flex items-center gap-2">
-                  <p class="text-[#a9c2b1] line-through tabular-nums text-lg decoration-[#a9c2b1]/70 flex items-center gap-1">
-                    <span dir="ltr">{fmt(comparePrice)}</span>
-                    <span>{cur}</span>
-                  </p>
+                  <span class="text-[#a9c2b1] line-through tabular-nums text-lg decoration-[#a9c2b1]/70">
+                    <bdi dir="ltr">{fmt(comparePrice)}</bdi> {cur}
+                  </span>
                   {discountPct > 0 && (
                     <span class="bg-[#cdee5a] text-[#0d2418] text-[13px] font-semibold rounded-full px-3 py-1">
                       وفّر {discountPct}%
@@ -211,43 +222,29 @@ const steps = [
             </div>
           </div>
 
-          <!-- المعرض -->
-          <div class="mt-rise mt-10 md:mt-0" style="--d:200ms;">
-            <div class="relative rounded-[2rem] bg-[#f6f6f6] ring-1 ring-white/20 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.7)] overflow-hidden">
-              {gallery.length > 0 ? (
-                <div id="mt-gallery" class="mt-snap flex overflow-x-auto snap-x snap-mandatory" dir="ltr" aria-label="تصاور المنتج">
-                  {gallery.map((src, i) => (
-                    <div class="shrink-0 w-full snap-center aspect-[4/5] overflow-hidden p-6 flex items-center justify-center">
-                      <img
-                        src={src}
-                        alt={`Bracelet Metropole ${i + 1}`}
-                        class="w-full h-full object-contain mix-blend-multiply drop-shadow-sm"
-                        loading={i === 0 ? "eager" : "lazy"}
-                        decoding="async"
-                      />
-                    </div>
-                  ))}
-                </div>
+          <!-- صورة المنتج الرئيسية (بدون إطار، تطفو على الأخضر) -->
+          <div class="mt-rise mt-6 md:mt-0" style="--d:200ms;">
+            <div class="relative aspect-[5/4] overflow-hidden">
+              <div class="absolute inset-x-[10%] top-[14%] bottom-[14%] rounded-full bg-[#1f9a68]/35 blur-3xl" aria-hidden="true"></div>
+              {pic(0) ? (
+                <img
+                  src={pic(0) ?? ""}
+                  alt="Bracelet Metropole"
+                  class="absolute inset-x-0 w-full"
+                  style="top:-48.4%;transform-origin:50% 63%;transform:scale(1.45);filter:drop-shadow(0 20px 20px rgba(0,0,0,0.5));"
+                  loading="eager"
+                  decoding="async"
+                />
               ) : (
-                <div class="aspect-[4/5] flex items-center justify-center p-10">
-                  <svg viewBox="0 0 400 400" class="w-full h-full max-w-xs" role="img" aria-label="Bracelet Metropole">
-                    <circle cx="200" cy="200" r="132" fill="none" stroke="#9fb0a6" stroke-width="34" stroke-dasharray="27 8" />
-                    <circle cx="200" cy="200" r="104" fill="none" stroke="#9fb0a6" stroke-opacity="0.5" stroke-width="1.5" />
-                  </svg>
-                </div>
+                <svg viewBox="0 0 400 400" class="absolute inset-0 w-full h-full p-6" role="img" aria-label="Bracelet Metropole">
+                  <circle cx="200" cy="200" r="132" fill="none" stroke="#9fb0a6" stroke-width="34" stroke-dasharray="27 8" />
+                  <circle cx="200" cy="200" r="104" fill="none" stroke="#9fb0a6" stroke-opacity="0.5" stroke-width="1.5" />
+                </svg>
               )}
-
               {discountPct > 0 && (
-                <span class="absolute top-4 start-4 bg-[#063b27] text-[#eef3ee] text-[13px] font-semibold rounded-full px-3 py-1">
+                <span class="absolute top-2 start-0 z-10 bg-[#cdee5a] text-[#0d2418] text-[13px] font-semibold rounded-full px-3 py-1">
                   -{discountPct}%
                 </span>
-              )}
-              {gallery.length > 1 && (
-                <div id="mt-dots" class="absolute bottom-4 inset-x-0 flex justify-center gap-2" dir="ltr" aria-hidden="true">
-                  {gallery.map((_, i) => (
-                    <span class={`h-2 rounded-full bg-[#063b27] transition-all duration-300 ${i === 0 ? "w-6 opacity-100" : "w-2 opacity-30"}`}></span>
-                  ))}
-                </div>
               )}
             </div>
           </div>
@@ -256,15 +253,47 @@ const steps = [
 
       <!-- ═════════ شريط الثقة ═════════ -->
       <section class="bg-[#04271a] text-[#dfe9e1]">
-        <ul class="max-w-5xl mx-auto grid grid-cols-3">
-          {trust.map((t, i) => (
-            <li class={`flex flex-col items-center gap-2 px-2 py-5 text-center ${i !== 0 ? 'border-r border-white/10' : ''}`}>
+        <ul class="max-w-5xl mx-auto grid grid-cols-3 divide-x divide-x-reverse divide-white/10">
+          {trust.map((t) => (
+            <li class="flex flex-col items-center gap-2 px-2 py-5 text-center">
               <svg class="w-6 h-6 text-[#cdee5a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={icons[t.icon]} />
               <span class="text-[13px] leading-5 font-medium">{t.label}</span>
             </li>
           ))}
         </ul>
       </section>
+
+      <!-- ═════════ الألوان ═════════ -->
+      {(pic(0) || pic(2)) && (
+        <section class="max-w-5xl mx-auto px-5 pt-16 md:pt-24">
+          <h2 class="mt-display text-[2.25rem] leading-[1.2] font-bold sm:text-5xl" style="text-wrap:balance;">
+            اختار لونك
+          </h2>
+          <p class="mt-3 text-[#44564b] leading-8 max-w-md">
+            فضي كلاسيكي ولا أخضر يخطف العين. تختارو في الفورمولار تحت.
+          </p>
+          <div class="mt-8 grid grid-cols-2 gap-3 sm:gap-6 max-w-2xl">
+            {[
+              { i: 0, label: "فضي", dark: true },
+              { i: 2, label: "اخضر ملكي", dark: false },
+            ].map((c) => pic(c.i) && (
+              <figure class="relative aspect-square overflow-hidden rounded-3xl ring-1 ring-[#063b27]/10" style={c.dark ? stageDark : stageLight}>
+                <img
+                  src={pic(c.i) ?? ""}
+                  alt={`Bracelet Metropole ${c.label}`}
+                  class="absolute inset-x-0 w-full"
+                  style={`top:-28.75%;transform-origin:50% 63%;transform:scale(1.6);filter:drop-shadow(0 14px 14px rgba(0,0,0,${c.dark ? 0.5 : 0.28}));`}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption class={`absolute bottom-3 inset-x-0 text-center text-[14px] font-medium ${c.dark ? "text-[#eef3ee]" : "text-[#0d2418]"}`}>
+                  {c.label}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
 
       <!-- ═════════ التفاصيل ═════════ -->
       <section class="max-w-5xl mx-auto px-5 py-16 md:py-24">
@@ -283,10 +312,10 @@ const steps = [
                 <circle cx="120" cy="120" r="108" fill="none" stroke="#063b27" stroke-width="16" stroke-dasharray="15 5" stroke-opacity="0.9" />
                 <circle cx="120" cy="120" r="88" fill="none" stroke="#063b27" stroke-opacity="0.25" stroke-width="1" />
               </svg>
-              <div class="relative text-center flex flex-col items-center justify-center">
-                <p class="mt-display text-6xl leading-none font-bold tabular-nums text-[#063b27]">19</p>
-                <p class="mt-1 text-[14px] font-medium text-[#0d2418]">سم</p>
-                <p class="text-[12px] text-[#44564b]">المحيط الداخلي</p>
+              <div class="relative text-center">
+                <p class="mt-display text-7xl leading-none font-bold tabular-nums text-[#063b27]">19</p>
+                <p class="mt-2 text-[15px] font-medium text-[#0d2418]">سم</p>
+                <p class="text-[13px] text-[#44564b]">المحيط الداخلي</p>
               </div>
             </div>
           </div>
@@ -305,7 +334,42 @@ const steps = [
             ))}
           </ul>
         </div>
+
+        {(pic(1) || pic(3)) && (
+          <div class="mt-14 grid grid-cols-2 gap-3 sm:gap-6">
+            {[
+              { i: 1, dark: true, cap: "قفل Déployant وشعار التمساح" },
+              { i: 3, dark: false, cap: "نقشة petit piqué على الحلقات" },
+            ].map((d) => pic(d.i) && (
+              <figure>
+                <div class="aspect-square overflow-hidden rounded-3xl ring-1 ring-[#063b27]/10" style={d.dark ? stageDark : stageLight}>
+                  <img
+                    src={pic(d.i) ?? ""}
+                    alt={d.cap}
+                    class="w-full h-full object-cover"
+                    style={`filter:drop-shadow(0 10px 12px rgba(0,0,0,${d.dark ? 0.45 : 0.25}));`}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                <figcaption class="mt-3 text-[13px] leading-5 text-[#44564b]">{d.cap}</figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
       </section>
+
+      {pic(4) && (
+        <section class="max-w-5xl mx-auto px-5 pb-16 md:pb-24">
+          <div class="flex items-center gap-5 sm:gap-8 rounded-3xl bg-white border border-[#063b27]/10 p-5 sm:p-8">
+            <img src={pic(4) ?? ""} alt="علبة Lacoste وكيس القماش" class="w-32 sm:w-52 shrink-0 object-contain" loading="lazy" decoding="async" />
+            <div>
+              <h3 class="mt-display text-2xl font-bold leading-snug">جاهز للهدية</h3>
+              <p class="mt-2 text-[#44564b] leading-7">علبة Lacoste مع كيس قماش. تهديه ولا تدلل بيه روحك.</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <!-- ═════════ كيفاش تطلب ═════════ -->
       <section class="mt-pique bg-[#063b27] text-[#eef3ee]">
@@ -327,7 +391,7 @@ const steps = [
         </div>
       </section>
 
-      <!-- 📦 فورمولار الدفع -->
+      <!-- 📦 فورمولار الدفع (المحتوى والبروبس بدون تغيير) -->
       <section class="pt-14 md:pt-20">
         <div class="max-w-xl mx-auto px-3 sm:px-4 scroll-mt-4" id="order-section-wrapper">
           <div class="text-center mb-7 px-2">
@@ -339,7 +403,7 @@ const steps = [
             </p>
           </div>
 
-          <div class="bg-white rounded-3xl shadow-[0_24px_50px_-28px_rgba(6,59,39,0.45)] border border-[#063b27]/10 overflow-hidden p-2 sm:p-4 w-full">
+          <div class="bg-white rounded-3xl shadow-[0_24px_50px_-28px_rgba(6,59,39,0.45)] border border-[#063b27]/10 overflow-hidden [&>*]:w-full [&>*]:max-w-none [&>*]:m-0 [&>*]:border-0 [&>*]:shadow-none [&>*]:rounded-none">
             <OrderForm
               product={product}
               content={content}
@@ -373,9 +437,8 @@ const steps = [
           <div class="max-w-xl mx-auto flex items-center justify-between gap-4">
             <div class="text-[#eef3ee]">
               <p class="text-[12px] text-[#a9c2b1] leading-none mb-1">Bracelet Metropole</p>
-              <p class="mt-display text-2xl leading-none font-bold tabular-nums flex items-baseline gap-1">
-                <span dir="ltr">{fmt(basePrice)}</span>
-                <span class="text-sm font-medium text-[#c3d6c9]">{cur}</span>
+              <p class="mt-display text-2xl leading-none font-bold tabular-nums">
+                <bdi dir="ltr">{fmt(basePrice)}</bdi> <span class="text-sm font-medium text-[#c3d6c9]">{cur}</span>
               </p>
             </div>
             <a
@@ -389,7 +452,7 @@ const steps = [
         </div>
       </div>
 
-      <!-- إظهار/إخفاء الشريط الثابت -->
+      <!-- إظهار/إخفاء الشريط الثابت حسب موقع الزبون (دفاعي، ما يكسر والو إذا فشل) -->
       <script is:inline>
         (function () {
           try {
@@ -407,19 +470,6 @@ const steps = [
               var link = bar.querySelector("a");
               if (link) link.setAttribute("tabindex", show ? "0" : "-1");
             };
-            var g = document.getElementById("mt-gallery");
-            var dots = document.querySelectorAll("#mt-dots span");
-            if (g && dots.length) {
-              g.addEventListener("scroll", function () {
-                var i = Math.round(Math.abs(g.scrollLeft) / (g.clientWidth || 1));
-                dots.forEach(function (d, k) {
-                  d.classList.toggle("w-6", k === i);
-                  d.classList.toggle("opacity-100", k === i);
-                  d.classList.toggle("w-2", k !== i);
-                  d.classList.toggle("opacity-30", k !== i);
-                });
-              }, { passive: true });
-            }
             new IntersectionObserver(function (e) { heroSeen = e[0].isIntersecting; update(); }).observe(hero);
             new IntersectionObserver(function (e) { orderSeen = e[0].isIntersecting; update(); }, { threshold: 0.05 }).observe(order);
           } catch (err) {}
@@ -457,7 +507,7 @@ const steps = [
     letter-spacing: 0;
   }
 
-  /* نقشة petit piqué */
+  /* نقشة petit piqué: شبكة نقاط صغيرة متداخلة */
   .mt-pique {
     background-image:
       radial-gradient(circle at center, rgba(255, 255, 255, 0.075) 0 1px, transparent 1.6px),
@@ -473,7 +523,7 @@ const steps = [
     display: none;
   }
 
-  /* حركة الدخول */
+  /* حركة الدخول: لحظة وحدة، من حالة مرئية */
   @keyframes mt-rise {
     from {
       opacity: 0;
