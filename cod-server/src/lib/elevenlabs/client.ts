@@ -11,7 +11,10 @@ export class ElevenLabsProviderError extends Error {
 
 export interface ElevenLabsCallRequest {
   orderId: string;
-  phone: string;
+  whatsappUserId: string;
+  customerName: string;
+  orderNumber: string;
+  orderTotal: string;
 }
 
 export interface ElevenLabsCallResponse {
@@ -27,7 +30,12 @@ export function normalizeAlgerianPhone(phone: string): string | null {
   return null;
 }
 
-const ELEVENLABS_URL = "https://api.elevenlabs.io/v1/convai/twilio/outbound-call";
+export function normalizeAlgerianWhatsAppUserId(phone: string): string | null {
+  const normalized = normalizeAlgerianPhone(phone);
+  return normalized?.slice(1) ?? null;
+}
+
+const ELEVENLABS_URL = "https://api.elevenlabs.io/v1/convai/whatsapp/outbound-call";
 const ELEVENLABS_TIMEOUT_MS = 10_000;
 
 export class ElevenLabsClient {
@@ -37,7 +45,9 @@ export class ElevenLabsClient {
       | "ELEVENLABS_API_KEY"
       | "ELEVENLABS_CALLS_ENABLED"
       | "ELEVENLABS_AGENT_ID"
-      | "ELEVENLABS_AGENT_PHONE_NUMBER_ID"
+      | "ELEVENLABS_WHATSAPP_PHONE_NUMBER_ID"
+      | "ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_NAME"
+      | "ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_LANGUAGE"
     >,
     private readonly fetcher: typeof fetch = globalThis.fetch,
   ) {}
@@ -46,7 +56,9 @@ export class ElevenLabsClient {
     return Boolean(
       this.env.ELEVENLABS_API_KEY &&
       this.env.ELEVENLABS_AGENT_ID &&
-      this.env.ELEVENLABS_AGENT_PHONE_NUMBER_ID,
+      this.env.ELEVENLABS_WHATSAPP_PHONE_NUMBER_ID &&
+      this.env.ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_NAME &&
+      this.env.ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_LANGUAGE,
     );
   }
 
@@ -77,8 +89,20 @@ export class ElevenLabsClient {
         },
         body: JSON.stringify({
           agent_id: this.env.ELEVENLABS_AGENT_ID,
-          agent_phone_number_id: this.env.ELEVENLABS_AGENT_PHONE_NUMBER_ID,
-          to_number: request.phone,
+          whatsapp_phone_number_id: this.env.ELEVENLABS_WHATSAPP_PHONE_NUMBER_ID,
+          whatsapp_user_id: request.whatsappUserId,
+          whatsapp_call_permission_request_template_name:
+            this.env.ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_NAME,
+          whatsapp_call_permission_request_template_language_code:
+            this.env.ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_LANGUAGE,
+          conversation_initiation_client_data: {
+            dynamic_variables: {
+              order_id: request.orderId,
+              order_number: request.orderNumber,
+              customer_name: request.customerName,
+              order_total: request.orderTotal,
+            },
+          },
         }),
         signal: controller.signal,
       });

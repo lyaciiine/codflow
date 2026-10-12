@@ -81,9 +81,11 @@ crons = ["0 * * * *"]
 #                       required `aud` claim for MCP bearer tokens)
 #   ELEVENLABS_API_KEY   → set with `wrangler secret put ELEVENLABS_API_KEY`
 #   ELEVENLABS_WEBHOOK_SECRET → set with `wrangler secret put ELEVENLABS_WEBHOOK_SECRET`
-#   ELEVENLABS_CALLS_ENABLED → keep "false" until an agent and phone provider are configured
+#   ELEVENLABS_CALLS_ENABLED → keep "false" until WhatsApp prerequisites are configured
 #   ELEVENLABS_AGENT_ID → set the configured Conversational AI agent ID
-#   ELEVENLABS_AGENT_PHONE_NUMBER_ID → set the imported Twilio phone number ID
+#   ELEVENLABS_WHATSAPP_PHONE_NUMBER_ID → set the imported WhatsApp business phone-number ID
+#   ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_NAME → approved Meta call-permission template
+#   ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_LANGUAGE → approved template language code
 [vars]
 ENVIRONMENT = "development"
 WORKER_URL = "http://localhost:8787"
@@ -93,7 +95,9 @@ BETTER_AUTH_URL = "http://localhost:4321/api/auth"
 WORKER_SELF_URL = "http://localhost:8787/"
 ELEVENLABS_CALLS_ENABLED = "false"
 ELEVENLABS_AGENT_ID = ""
-ELEVENLABS_AGENT_PHONE_NUMBER_ID = ""
+ELEVENLABS_WHATSAPP_PHONE_NUMBER_ID = ""
+ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_NAME = ""
+ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_LANGUAGE = ""
 # Development allows all origins for easier testing. Production uses ALLOWED_ORIGINS.
 ALLOWED_ORIGINS = "*"
 

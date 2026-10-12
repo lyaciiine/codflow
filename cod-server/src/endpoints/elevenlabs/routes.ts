@@ -13,8 +13,8 @@ const requestCallRoute = defineRoute({
   auth: { scope: SCOPES.ORDERS_UPDATE },
   params: IdParamSchema,
   tags: ["ElevenLabs"],
-  summary: "Record a test call request",
-  description: "Records a test call request. Outbound execution is disabled until the provider and agent are configured.",
+  summary: "Request a WhatsApp order confirmation call",
+  description: "Requests a WhatsApp confirmation call. Outbound execution remains disabled until explicitly enabled and configured.",
   operationId: "requestElevenLabsTestCall",
   responses: {
     202: {

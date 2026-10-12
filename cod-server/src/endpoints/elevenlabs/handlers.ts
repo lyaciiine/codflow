@@ -2,14 +2,14 @@ import type { Context } from "hono";
 import type { AppContext } from "@/types";
 import { getDb } from "@/db";
 import { elevenLabsCalls } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { getOrderById } from "@/endpoints/orders/queries";
 import {
   ElevenLabsClient,
   ElevenLabsConfigurationError,
   ElevenLabsDisabledError,
   ElevenLabsProviderError,
-  normalizeAlgerianPhone,
+  normalizeAlgerianWhatsAppUserId,
 } from "@/lib/elevenlabs/client";
 import { TimeoutError } from "@/lib/timeout";
 import { verifyElevenLabsSignature } from "@/lib/elevenlabs/webhook";
@@ -35,10 +35,13 @@ export async function requestTestCall(c: Context<AppContext>) {
   const db = getDb(c.env.DB);
   const order = await getOrderById(db, orderId);
   if (!order) throw new NotFoundError("Order", orderId);
+  if (order.status !== "new") {
+    throw new ValidationError("Only new orders are eligible for WhatsApp confirmation calls");
+  }
 
-  const phone = normalizeAlgerianPhone(order.phone);
-  if (!phone) {
-    throw new ValidationError("Order phone is not a valid Algerian mobile number");
+  const whatsappUserId = normalizeAlgerianWhatsAppUserId(order.phone);
+  if (!whatsappUserId) {
+    throw new ValidationError("Order phone cannot be mapped to a WhatsApp user ID");
   }
 
   const client = new ElevenLabsClient(c.env);
@@ -82,7 +85,13 @@ export async function requestTestCall(c: Context<AppContext>) {
   }
 
   try {
-    const provider = await client.requestTestCall({ orderId, phone });
+    const provider = await client.requestTestCall({
+      orderId,
+      whatsappUserId,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      orderTotal: String(order.price),
+    });
     await db.update(elevenLabsCalls).set({
       status: "started",
       conversationId: provider.conversationId,
@@ -166,11 +175,21 @@ export async function handleWebhook(c: Context<AppContext>) {
   let status = "ignored";
   let reason: string | null = "Ambiguous or unsupported outcome";
   const callRequest = await db
-    .select({ id: elevenLabsCalls.id, status: elevenLabsCalls.status })
+    .select({
+      id: elevenLabsCalls.id,
+      status: elevenLabsCalls.status,
+      conversationId: elevenLabsCalls.conversationId,
+    })
     .from(elevenLabsCalls)
-    .where(eq(elevenLabsCalls.orderId, orderId))
+    .where(and(
+      eq(elevenLabsCalls.orderId, orderId),
+      inArray(elevenLabsCalls.status, ["requested", "in_progress", "started", "provider_ambiguous"]),
+    ))
     .get();
-  if (!callRequest || !["requested", "in_progress"].includes(callRequest.status)) {
+  if (
+    !callRequest ||
+    (conversationId && callRequest.conversationId !== conversationId)
+  ) {
     reason = "No eligible ElevenLabs call request for order";
   } else if (outcome === "confirmed" || outcome === "cancelled") {
     const result = await updateOrderStatusWebhook(db, orderId, outcome, "elevenlabs");

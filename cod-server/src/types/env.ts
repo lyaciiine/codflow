@@ -86,5 +86,7 @@ export interface Env {
   /** Disabled by default until an agent and outbound phone provider are configured. */
   ELEVENLABS_CALLS_ENABLED?: string;
   ELEVENLABS_AGENT_ID?: string;
-  ELEVENLABS_AGENT_PHONE_NUMBER_ID?: string;
+  ELEVENLABS_WHATSAPP_PHONE_NUMBER_ID?: string;
+  ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_NAME?: string;
+  ELEVENLABS_WHATSAPP_CALL_PERMISSION_TEMPLATE_LANGUAGE?: string;
 }
