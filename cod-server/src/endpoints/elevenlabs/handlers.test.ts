@@ -60,6 +60,16 @@ describe("ElevenLabs order call handlers", () => {
     expect(response.status).toBe(404);
   });
 
+  it("rejects an invalid Algerian customer phone before recording a call", async () => {
+    vi.mocked(getOrderById).mockResolvedValue({
+      id: "order-1",
+      phone: "0215500000",
+    } as any);
+    const response = await appFor(requestTestCall).request("/orders/order-1", { method: "POST" });
+    expect(response.status).toBe(400);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
   it("records ambiguous outcomes without changing status", async () => {
     const body = JSON.stringify({
       type: "post_call_transcription",

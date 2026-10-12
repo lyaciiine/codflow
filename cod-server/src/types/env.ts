@@ -85,4 +85,6 @@ export interface Env {
   ELEVENLABS_WEBHOOK_SECRET?: string;
   /** Disabled by default until an agent and outbound phone provider are configured. */
   ELEVENLABS_CALLS_ENABLED?: string;
+  ELEVENLABS_AGENT_ID?: string;
+  ELEVENLABS_AGENT_PHONE_NUMBER_ID?: string;
 }

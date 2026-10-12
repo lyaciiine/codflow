@@ -4,10 +4,17 @@ import { getDb } from "@/db";
 import { elevenLabsCalls } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getOrderById } from "@/endpoints/orders/queries";
-import { ElevenLabsClient, ElevenLabsConfigurationError, ElevenLabsDisabledError } from "@/lib/elevenlabs/client";
+import {
+  ElevenLabsClient,
+  ElevenLabsConfigurationError,
+  ElevenLabsDisabledError,
+  ElevenLabsProviderError,
+  normalizeAlgerianPhone,
+} from "@/lib/elevenlabs/client";
+import { TimeoutError } from "@/lib/timeout";
 import { verifyElevenLabsSignature } from "@/lib/elevenlabs/webhook";
 import { updateOrderStatusWebhook } from "@/endpoints/orders/queries";
-import { ValidationError, NotFoundError } from "@/lib/errors/classes";
+import { ValidationError, NotFoundError, ExternalApiError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { z } from "zod";
 
@@ -29,30 +36,88 @@ export async function requestTestCall(c: Context<AppContext>) {
   const order = await getOrderById(db, orderId);
   if (!order) throw new NotFoundError("Order", orderId);
 
-  const callId = crypto.randomUUID();
-  const now = new Date().toISOString();
-  const client = new ElevenLabsClient(c.env);
-  let status = "disabled";
-  let reason = "ElevenLabs calls are disabled";
-  if (!client.isConfigured()) {
-    status = "missing_configuration";
-    reason = "ElevenLabs API key is not configured";
-  } else if (client.isEnabled()) {
-    reason = "Outbound phone provider and ElevenLabs method are not configured";
+  const phone = normalizeAlgerianPhone(order.phone);
+  if (!phone) {
+    throw new ValidationError("Order phone is not a valid Algerian mobile number");
   }
 
-  await db.insert(elevenLabsCalls).values({
-    id: callId,
-    orderId,
-    status,
-    reason,
-    createdAt: now,
-  });
+  const client = new ElevenLabsClient(c.env);
+  if (!client.isEnabled()) {
+    const callId = crypto.randomUUID();
+    await db.insert(elevenLabsCalls).values({
+      id: callId, orderId, status: "disabled", reason: "ElevenLabs calls are disabled",
+      createdAt: new Date().toISOString(),
+    });
+    return c.json({
+      success: true,
+      data: { callId, status: "disabled", executionStarted: false },
+    }, 202);
+  }
+  if (!client.isConfigured()) {
+    throw new ValidationError("ElevenLabs outbound configuration is incomplete");
+  }
 
-  return c.json({
-    success: true,
-    data: { callId, status, executionStarted: false },
-  }, 202);
+  const callId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  try {
+    await db.insert(elevenLabsCalls).values({
+      id: callId, orderId, status: "requested", createdAt: now,
+    });
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+    const existing = await db.select({
+      id: elevenLabsCalls.id,
+      status: elevenLabsCalls.status,
+      conversationId: elevenLabsCalls.conversationId,
+    }).from(elevenLabsCalls).where(eq(elevenLabsCalls.orderId, orderId)).get();
+    return c.json({
+      success: true,
+      data: {
+        callId: existing?.id ?? callId,
+        status: existing?.status ?? "requested",
+        conversationId: existing?.conversationId ?? null,
+        executionStarted: Boolean(existing?.conversationId),
+      },
+    }, 202);
+  }
+
+  try {
+    const provider = await client.requestTestCall({ orderId, phone });
+    await db.update(elevenLabsCalls).set({
+      status: "started",
+      conversationId: provider.conversationId,
+      providerCallId: provider.callSid,
+      processedAt: new Date().toISOString(),
+    }).where(eq(elevenLabsCalls.id, callId));
+    return c.json({
+      success: true,
+      data: {
+        callId,
+        status: "started",
+        conversationId: provider.conversationId,
+        executionStarted: true,
+      },
+    }, 202);
+  } catch (error) {
+    const status = error instanceof TimeoutError ? "provider_ambiguous" : "failed";
+    await db.update(elevenLabsCalls).set({
+      status,
+      reason: error instanceof TimeoutError
+        ? "Provider response timed out; call may have started; no retry performed"
+        : "ElevenLabs provider request failed",
+      processedAt: new Date().toISOString(),
+    }).where(eq(elevenLabsCalls.id, callId));
+    if (error instanceof TimeoutError) {
+      throw new ExternalApiError(
+        "ElevenLabs",
+        "Call request timed out; no retry was performed because the provider may have started it",
+      );
+    }
+    if (error instanceof ElevenLabsProviderError) {
+      throw new ExternalApiError("ElevenLabs", `Call request failed (${error.kind})`);
+    }
+    throw error;
+  }
 }
 
 export async function handleWebhook(c: Context<AppContext>) {

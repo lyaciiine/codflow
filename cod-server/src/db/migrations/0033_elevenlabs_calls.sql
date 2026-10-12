@@ -14,3 +14,7 @@ CREATE TABLE IF NOT EXISTS elevenlabs_calls (
 
 CREATE INDEX IF NOT EXISTS elevenlabs_calls_order_id_idx
   ON elevenlabs_calls(order_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS elevenlabs_calls_request_order_unique
+  ON elevenlabs_calls(order_id)
+  WHERE status IN ('requested', 'in_progress', 'started', 'provider_ambiguous');
