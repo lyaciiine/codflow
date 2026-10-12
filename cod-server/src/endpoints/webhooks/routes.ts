@@ -25,6 +25,7 @@ import {
   handleYalidineWebhook,
   handleZrWebhook,
 } from "./handlers";
+import { handleWebhook as handleElevenLabsWebhook } from "@/endpoints/elevenlabs/handlers";
 
 const jsonContent = <T extends z.ZodType>(schema: T) => ({
   "application/json": { schema },
@@ -158,6 +159,28 @@ Signature/payload failures are rejected with \`400 INVALID_WEBHOOK_PAYLOAD\`; pr
   handler: handleZrWebhook,
 });
 
+const elevenLabsWebhookRoute = defineRoute({
+  method: "post",
+  path: "/elevenlabs",
+  auth: "public",
+  tags: ["Webhooks"],
+  summary: "ElevenLabs post-call webhook",
+  description: "Receives a signature-verified ElevenLabs post-call event.",
+  operationId: "elevenLabsWebhook",
+  headers: z.object({
+    "ElevenLabs-Signature": z.string().optional(),
+  }),
+  responses: {
+    200: receivedResponse,
+    400: webhookErrorResponse(
+      "INVALID_WEBHOOK_PAYLOAD",
+      "VALIDATION",
+      "Invalid ElevenLabs webhook signature or payload"
+    ),
+  },
+  handler: handleElevenLabsWebhook,
+});
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 const webhooksRouter = new OpenAPIHono<AppContext>();
@@ -165,5 +188,6 @@ const webhooksRouter = new OpenAPIHono<AppContext>();
 webhooksRouter.openapi(yalidineChallengeRoute.route, yalidineChallengeRoute.handler);
 webhooksRouter.openapi(yalidineWebhookRoute.route, yalidineWebhookRoute.handler);
 webhooksRouter.openapi(zrWebhookRoute.route, zrWebhookRoute.handler);
+webhooksRouter.openapi(elevenLabsWebhookRoute.route, elevenLabsWebhookRoute.handler);
 
 export default webhooksRouter;

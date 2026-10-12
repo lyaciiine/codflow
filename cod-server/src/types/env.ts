@@ -79,4 +79,10 @@ export interface Env {
    * Durable background upload of MCP-agent images into the landing page stack.
    */
   LP_IMAGE_UPLOAD_WORKFLOW: Workflow;
+  /** ElevenLabs API credential; server-only and never returned to clients. */
+  ELEVENLABS_API_KEY?: string;
+  /** ElevenLabs webhook HMAC secret; server-only. */
+  ELEVENLABS_WEBHOOK_SECRET?: string;
+  /** Disabled by default until an agent and outbound phone provider are configured. */
+  ELEVENLABS_CALLS_ENABLED?: string;
 }

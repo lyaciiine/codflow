@@ -79,6 +79,9 @@ crons = ["0 * * * *"]
 #                       Worker's Better Auth origin — JWT issuer verified here)
 #   WORKER_SELF_URL  → https://api.yourdomain.com/     (this Worker's own origin;
 #                       required `aud` claim for MCP bearer tokens)
+#   ELEVENLABS_API_KEY   → set with `wrangler secret put ELEVENLABS_API_KEY`
+#   ELEVENLABS_WEBHOOK_SECRET → set with `wrangler secret put ELEVENLABS_WEBHOOK_SECRET`
+#   ELEVENLABS_CALLS_ENABLED → keep "false" until an agent and phone provider are configured
 [vars]
 ENVIRONMENT = "development"
 WORKER_URL = "http://localhost:8787"
@@ -86,6 +89,7 @@ MEDIA_DOMAIN = "media.example.com"
 R2_BUCKET_NAME = "codflow-images"
 BETTER_AUTH_URL = "http://localhost:4321/api/auth"
 WORKER_SELF_URL = "http://localhost:8787/"
+ELEVENLABS_CALLS_ENABLED = "false"
 # Development allows all origins for easier testing. Production uses ALLOWED_ORIGINS.
 ALLOWED_ORIGINS = "*"
 

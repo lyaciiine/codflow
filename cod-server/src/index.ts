@@ -43,6 +43,7 @@ import analyticsRoutes from "@/endpoints/analytics/routes";
 import abandonedOrdersRoutes from "@/endpoints/abandoned-orders/routes";
 import storeAbandonedRoutes from "@/endpoints/abandoned-orders/store-routes";
 import storeOtpRoutes from "@/endpoints/store-otp/store-routes";
+import elevenLabsRoutes from "@/endpoints/elevenlabs/routes";
 
 import { sweepAbandonedOrders } from "@/cron/sweep-abandoned-orders";
 import { runOrphanImageSweep } from "@/cron/sweep-orphan-images";
@@ -137,6 +138,7 @@ app.route("/api/products", productStockRouter);
 app.route("/api/mcp", mcpManagementRoutes);
 app.route("/api/analytics", analyticsRoutes);
 app.route("/api/abandoned-orders", abandonedOrdersRoutes);
+app.route("/api/elevenlabs", elevenLabsRoutes);
 
 // 404 handler
 app.notFound((c) => {

@@ -1122,6 +1122,21 @@ export const webhookEvents = sqliteTable("webhook_events", {
   providerEventUnique: uniqueIndex("webhook_events_provider_event_unique").on(t.provider, t.eventId),
 }));
 
+/** ElevenLabs call requests and post-call webhook audit records. */
+export const elevenLabsCalls = sqliteTable("elevenlabs_calls", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").references(() => orders.id, { onDelete: "cascade" }),
+  providerCallId: text("provider_call_id"),
+  eventId: text("event_id").unique(),
+  conversationId: text("conversation_id"),
+  outcome: text("outcome"),
+  status: text("status").notNull(),
+  rawPayload: text("raw_payload"),
+  reason: text("reason"),
+  createdAt: text("created_at").notNull(),
+  processedAt: text("processed_at"),
+});
+
 // ─── Offers ───────────────────────────────────────────────────────────────────
 
 /**
